@@ -97,13 +97,19 @@ struct Config {
     // double omegaThApop;
     // //############### THRESHOLD OMEGAS ##############
 
-    //############### THRESHOLD FITNESSES ##############
+    //############### POTENTIAL LANDSCAPE ##############
+    std::vector<double> typeOmega;
+    std::vector<double> typeBarrierW;
+    std::vector<double> typeSigmaPhi;
+    std::vector<double> typeSigmaFit;
+    double barrierPeakCoef;
+
     std::vector<double> typeFit0;
-    double Fit_Th_G1_arr;
+    double Fit_Th_Wall;
     double Fit_Th_G0;
     double Fit_Th_Diff;
     double Fit_Th_Apop;
-    //############### THRESHOLD FITNESSES ##############
+    //############### POTENTIAL LANDSCAPE ##############
     
     //############### TIMING & SAMPLING ##############
     double maxTime;
@@ -123,7 +129,7 @@ struct Config {
 
     //############### GAME ##############
     double R_cut_coef_game;
-    std::vector<double> typeGameNoiseSigma;
+    // std::vector<double> typeGameNoiseSigma;
     double tau;
     std::vector<std::vector<double>> typeTypePayOff_mat_real_C;
     std::vector<std::vector<double>> typeTypePayOff_mat_real_F1;
@@ -132,6 +138,10 @@ struct Config {
     std::vector<std::vector<double>> typeTypePayOff_mat_imag_F1;
     std::vector<std::vector<double>> typeTypePayOff_mat_imag_F2;
     //############### GAME ##############
+
+    //############### NEWBORN FITNESS ##############
+    std::string newBornFitKey;
+    //############### NEWBORN FITNESS ##############
 
     //############### INITIALIZAION ##############
     std::string initConfig;
@@ -279,13 +289,20 @@ int main()
     double G1Border; // The fraction of the whole period at which G1 ends (G1Border = (G1-end phase)/(2*PI) )
     //############### G1 phase border / (2*PI) ##############
     
-    //############### THRESHOLD FITNESSES ##############
+    //############### POTENTIAL LANDSCAPE ##############
+    vector<double> typeOmega(NTypes); // Omega for dPhi/dt
+    vector<double> typeBarrierW(NTypes); // Width of Barrier; the std of the gaussian barrier
+    vector<double> typeSigmaPhi(NTypes); // std of the Brownian noise in Phi
+    vector<double> typeSigmaFit(NTypes); // std of the Brownian noise in Fitness
+    double barrierPeakCoef;
+
     vector<double> typeFit0(NTypes); // F_0^WT and F_0^C, which are exactly omega_0 values.
-    double Fit_Th_G1_arr; // the fitness where WT cells go into G1-arrest. (only happens when they are already in G1).
+    // double Fit_Th_G1_arr; // the fitness where WT cells go into G1-arrest. (only happens when they are already in G1).
+    double Fit_Th_Wall; // where the infinite potential wall begins
     double Fit_Th_G0; // the fitness where WT cells go from G1-arrest into G0.
     double Fit_Th_Diff; // the fitness where WT cells go from G0 into differentiated state.
     double Fit_Th_Apop; // the fitness where WT cells go from differentiated state into apoptosis.
-    //############### THRESHOLD FITNESSES ##############
+    //############### POTENTIAL LANDSCAPE ##############
     
     //############### TIMING & SAMPLING ##############
     double maxTime; // total simulaion time
@@ -298,7 +315,7 @@ int main()
 
     //############### GAME ##############
     double R_cut_coef_game;   //R_cut_coef_game = (R_cut_game)/ (R[cell_1]+R[cell_2]); 
-    vector<double>  typeGameNoiseSigma(NTypes); // std of the noise term in payoff matrix entries
+    // vector<double>  typeGameNoiseSigma(NTypes); // std of the noise term in payoff matrix entries
     double tau; // the characteristic memory time for cells fitnesses
     vector<vector<double>> typeTypePayOff_mat_real_C(NTypes, vector<double>(NTypes)); // constant term
     vector<vector<double>> typeTypePayOff_mat_real_F1(NTypes, vector<double>(NTypes)); // coefficient of fitness of player no.1 (the one that GAINS the value in the payoff matrix)
@@ -307,6 +324,10 @@ int main()
     vector<vector<double>> typeTypePayOff_mat_imag_F1(NTypes, vector<double>(NTypes));
     vector<vector<double>> typeTypePayOff_mat_imag_F2(NTypes, vector<double>(NTypes));
     //############### GAME ##############
+
+    //############### NEWBORN FITNESS ##############
+    std::string newBornFitKey;
+    //############### NEWBORN FITNESS ##############
 
     //############### INITIALIZAION ##############
     std::string initConfig;
@@ -341,14 +362,22 @@ int main()
     G1Border = config.G1Border; // The fraction of the whole period at which G1 ends (G1Border = (G1-end phase)/(2*PI) )
     //############### G1 phase border / (2*PI) ##############
     
-    //############### THRESHOLD FITNESSES ##############
-    typeFit0 = config.typeFit0; // F_0^WT and F_0^C, which are exactly omega_0 values.
-    Fit_Th_G1_arr = config.Fit_Th_G1_arr; // the fitness where WT cells go into G1-arrest. (only happens when they are already in G1).
+    //############### POTENTIAL LANDSCAPE ##############
+    typeOmega = config.typeOmega;
+    typeBarrierW = config.typeBarrierW;
+    typeSigmaPhi = config.typeSigmaPhi;
+    typeSigmaFit = config.typeSigmaFit;
+    barrierPeakCoef = config.barrierPeakCoef;
+
+    typeFit0 = config.typeFit0; // inherent fitnesses
+    // Fit_Th_G1_arr = config.Fit_Th_G1_arr; // the fitness where WT cells go into G1-arrest. (only happens when they are already in G1).
+    Fit_Th_Wall = config.Fit_Th_Wall;
     Fit_Th_G0 = config.Fit_Th_G0; // the fitness where WT cells go from G1-arrest into G0.
     Fit_Th_Diff = config.Fit_Th_Diff; // the fitness where WT cells go from G0 into differentiated state.
     Fit_Th_Apop = config.Fit_Th_Apop; // the fitness where WT cells go from differentiated state into apoptosis.
-    double fit_eps = (1e-6) * abs(typeFit0[0] - Fit_Th_G1_arr);
-    //############### THRESHOLD FITNESSES ##############
+    double fit_eps = (1e-6) * abs(typeFit0[0] - Fit_Th_G0);
+    double phi_eps = (1e-8) * (2.0 * PI);
+    //############### POTENTIAL LANDSCAPE ##############
     
     //############### TIMING & SAMPLING ##############
     maxTime = config.maxTime; // total simulaion time
@@ -361,7 +390,7 @@ int main()
 
     //############### GAME ##############
     R_cut_coef_game = config.R_cut_coef_game;   //R_cut_coef_game = (R_cut_game)/ (R[cell_1]+R[cell_2]); 
-    typeGameNoiseSigma = config.typeGameNoiseSigma; // std of the noise term in payoff matrix entries
+    // typeGameNoiseSigma = config.typeGameNoiseSigma; // std of the noise term in payoff matrix entries
     tau = config.tau;
     typeTypePayOff_mat_real_C = config.typeTypePayOff_mat_real_C; // constant term
     typeTypePayOff_mat_real_F1 = config.typeTypePayOff_mat_real_F1; // coefficient of fitness of player no.1 (the one that GAINS the value in the payoff matrix)
@@ -371,10 +400,37 @@ int main()
     typeTypePayOff_mat_imag_F2 = config.typeTypePayOff_mat_imag_F2;
     //############### GAME ##############
 
+    //############### NEWBORN FITNESS ##############
+    newBornFitKey =  config.newBornFitKey;
+    //############### NEWBORN FITNESS ##############
+
     //############### INITIALIZAION ##############
     initConfig =  config.initConfig;
     //############### INITIALIZAION ##############
     ///////////////////////////////// VARIABLES VALUE ASSIGHNMENT /////////////////////
+
+
+    double motherFitnessWeight, inherentFitnessWeight;
+    if (newBornFitKey == "FI") // full interitence
+    {
+        motherFitnessWeight = 1.0;
+    } else if (newBornFitKey == "r") // full reset
+    {
+        motherFitnessWeight = 0.0;
+    }
+    else if (newBornFitKey == "ec") // economic fitness inheritence
+    {
+        motherFitnessWeight = 0.5;
+    }
+    else
+    {
+        std::ofstream errorFile("error.log");
+        errorFile << "Error: newBornFitKey in params.csv has a wrong vlalue!" << std::endl;
+        errorFile.close();
+        return 0;
+    }
+    inherentFitnessWeight = 1.0 - motherFitnessWeight;
+    
 
 
     vector<double> typeA_min(NTypes); // minimum area of each cell type
@@ -519,8 +575,8 @@ int main()
     unsigned long long int_rand_1, int_rand_2;
     double uniform_rand_1, uniform_rand_2, gauss_rand_1, gauss_rand_2; // for Box-Muller transform
     double SyncTerm;
-    double k_0, deltaF, trans_prob; // for the transotion probablities
-    k_0 = 1.0 / (1.0e-5);
+    double phiNoise, fitNoise, peakFactor, deltaPhi, phiMid;
+    // k_0 = 1.0 / (1.0e-5);
 
     // for identifying immediate neighbors
     // int NN_force[N_UpperLim][N_UpperLim];
@@ -678,27 +734,6 @@ int main()
                         SyncTerm = (typeTypeEpsilon[cellType_1][cellType_2] * (cellPhi[cellC_2] - cellPhi[cellC_1]));
                         cellSync[cellC_1] += SyncTerm;
                         cellSync[cellC_2] -= SyncTerm;
-                        //
-
-                        // // Game fitness fluxes
-                        // int_rand_1 = mt_rand();
-                        // while(int_rand_1 == MT_MIN || int_rand_1 == MT_MAX){int_rand_1 = mt_rand();}
-                        // int_rand_2 = mt_rand();
-                        // while(int_rand_2 == MT_MIN || int_rand_2 == MT_MAX){int_rand_2 = mt_rand();}
-
-                        // uniform_rand_1 = ((long double)(int_rand_1)-MT_MIN)/((long double)MT_MAX-MT_MIN);
-                        // uniform_rand_2 = ((long double)(int_rand_2)-MT_MIN)/((long double)MT_MAX-MT_MIN);
-
-                        // gauss_rand_1 =  pow( (-2.0 * log(uniform_rand_1)) , 0.5) * cos(2.0 * PI * uniform_rand_2); // Box-Muller transform
-                        // gauss_rand_2 =  pow( (-2.0 * log(uniform_rand_1)) , 0.5) * sin(2.0 * PI * uniform_rand_2); // Box-Muller transform
-
-                        // gain_noise_real = (GameNoiseSigma / dt) * gauss_rand_1;
-                        // gain_noise_imag = 
-
-                        // J_input_real     = gain_noise_real + \
-                        //                    typeTypePayOff_mat_real_C[cellType_1][cellType_2] + \
-                        //                    typeTypePayOff_mat_real_F1[cellType_1][cellType_2] * cellFitness[cellC_1][0] + \
-                        //                    typeTypePayOff_mat_real_F2[cellType_1][cellType_2] * cellFitness[cellC_2][0]; // This flux goes INTO cellC_1
 
                         J_input_real_1     = typeTypePayOff_mat_real_C[cellType_1][cellType_2] + \
                                              typeTypePayOff_mat_real_F1[cellType_1][cellType_2] * cellFitness[cellC_1][0] + \
@@ -724,47 +759,66 @@ int main()
 
             
 
-            // The Updated versions of Phi, R, and Fitness of cellC_1 are calculated here
-            // Fitness noise
-            int_rand_1 = mt_rand();
-            while(int_rand_1 == MT_MIN || int_rand_1 == MT_MAX){int_rand_1 = mt_rand();}
-            int_rand_2 = mt_rand();
-            while(int_rand_2 == MT_MIN || int_rand_2 == MT_MAX){int_rand_2 = mt_rand();}
 
-            uniform_rand_1 = ((long double)(int_rand_1)-MT_MIN)/((long double)MT_MAX-MT_MIN);
-            uniform_rand_2 = ((long double)(int_rand_2)-MT_MIN)/((long double)MT_MAX-MT_MIN);
 
-            gauss_rand_1 =  pow( (-2.0 * log(uniform_rand_1)) , 0.5) * cos(2.0 * PI * uniform_rand_2); // Box-Muller transform
-            // gauss_rand_2 =  pow( (-2.0 * log(uniform_rand_1)) , 0.5) * sin(2.0 * PI * uniform_rand_2); // Box-Muller transform
-
-            fitness_noise_real = typeGameNoiseSigma[cellType_1] * sqrt_dt * gauss_rand_1;
-            // Fitness noise
-
-            cellFitnessUpdated[cellC_1][0] = cellFitness[cellC_1][0] + \
-                                             fitness_noise_real + \
-                                             dt * ( \
-                                                        cellJ[cellC_1] + \
-                                                        (-1.0 / tau) * (cellFitness[cellC_1][0] - typeFit0[cellType_1]) 
-                                                    );
-            
-            if (cellState[cellC_1] == CYCLING_STATE) // Phi is updated only if the cell is in cycling state.
+            if (cellState[cellC_1] != APOP_STATE) // it should be alive
             {
-                
-                // if ( cellPhi[cellC_1] >= G1Border * 2.0 *PI )
-                // {
-                //     cellFitnessUpdated[cellC_1][0] = std::max(cellFitnessUpdated[cellC_1][0], Fit_Th_G1_arr + fit_eps);
-                // }
-                
 
-                cellPhiUpdated[cellC_1] = cellPhi[cellC_1] + dt * ( \
-                                                                cellFitness[cellC_1][0] + \
-                                                                cellSync[cellC_1] \
-                                                              );
+                // The Updated versions of Phi, R, and Fitness of cellC_1 are calculated here
+                // noises calc
+                int_rand_1 = mt_rand();
+                while(int_rand_1 == MT_MIN || int_rand_1 == MT_MAX){int_rand_1 = mt_rand();}
+                int_rand_2 = mt_rand();
+                while(int_rand_2 == MT_MIN || int_rand_2 == MT_MAX){int_rand_2 = mt_rand();}
+
+                uniform_rand_1 = ((long double)(int_rand_1)-MT_MIN)/((long double)MT_MAX-MT_MIN);
+                uniform_rand_2 = ((long double)(int_rand_2)-MT_MIN)/((long double)MT_MAX-MT_MIN);
+
+                gauss_rand_1 =  pow( (-2.0 * log(uniform_rand_1)) , 0.5) * cos(2.0 * PI * uniform_rand_2); // Box-Muller transform
+                gauss_rand_2 =  pow( (-2.0 * log(uniform_rand_1)) , 0.5) * sin(2.0 * PI * uniform_rand_2); // Box-Muller transform
+
+                phiNoise = typeSigmaPhi[cellType_1] * sqrt_dt * gauss_rand_1;
+                fitNoise = typeSigmaFit[cellType_1] * sqrt_dt * gauss_rand_2;
+                // noises calc
+
+                peakFactor = (barrierPeakCoef / (cellFitness[cellC_1][0]-Fit_Th_Wall) ) / (2.506628 * pow(typeBarrierW[cellType_1], 3));
+                // 2.506628 = sqrt(2*PI)
+
+                // prediction (first step for phi)
+                deltaPhi = (cellPhi[cellC_1] - G1Border*2*PI);
+                phiMid = cellPhi[cellC_1] + \
+                        dt * (typeOmega[cellType_1] + peakFactor * deltaPhi * exp(- deltaPhi * deltaPhi / (2 * barrierPeakCoef * barrierPeakCoef)) + cellSync[cellC_1]) + \
+                        phiNoise;
+                
+                // correction (second step for phi)
+                deltaPhi = (phiMid - G1Border*2*PI);
+                cellPhiUpdated[cellC_1] = cellPhi[cellC_1] + \
+                                        dt * (typeOmega[cellType_1] + peakFactor * deltaPhi * exp(- deltaPhi * deltaPhi / (2 * barrierPeakCoef * barrierPeakCoef)) + cellSync[cellC_1]) + \
+                                        phiNoise;
+                
+                if (cellPhiUpdated[cellC_1] < 0)
+                {
+                    cellPhiUpdated[cellC_1] = phi_eps;
+                }
+                // fitness update
+                // cellFitnessUpdated[cellC_1][0] = cellFitness[cellC_1][0] + \
+                //                                 fitNoise + \
+                //                                 dt * ( \
+                //                                             cellJ[cellC_1] + \
+                //                                             (-1.0 / tau) * (cellFitness[cellC_1][0] - typeFit0[cellType_1]) 
+                //                                         );
+                cellFitnessUpdated[cellC_1][0] = cellFitness[cellC_1][0] + \
+                                                fitNoise + \
+                                                dt * cellJ[cellC_1];
+
             }
-            else
+            else // if it is dead, nothing updates
             {
                 cellPhiUpdated[cellC_1] = cellPhi[cellC_1];
+                cellFitnessUpdated[cellC_1][0] = cellFitness[cellC_1][0];
             }
+
+
             cellAreaUpdate_val = typeA_min[cellType_1] + (typeA_max[cellType_1] - typeA_min[cellType_1]) * cellPhiUpdated[cellC_1] / (2 * PI);
             cellRUpdated[cellC_1] = pow(cellAreaUpdate_val / PI, 0.5);
             // The Updated versions of Phi, R, and Fitness of cellC_1 are calculated here
@@ -896,11 +950,12 @@ int main()
                 cellVy[newBornInd] = cellVy[cellC_1] / 2.0;
 
                 // cellArea[newBornInd] = A_min;
-                cellPhi[newBornInd] = 0.0 ;
+                cellPhi[newBornInd] = phi_eps ;
                 cellR[newBornInd] = typeR0[cellType_1];
                 cellState[newBornInd] = cellState[cellC_1];
 
-                cellFitness[newBornInd][0] = cellFitness[cellC_1][0];
+                // cellFitness[newBornInd][0] = cellFitness[cellC_1][0];
+                cellFitness[newBornInd][0] = motherFitnessWeight * cellFitness[cellC_1][0] + inherentFitnessWeight * typeFit0[cellType_1];
                 // cellFitness[newBornInd][1] = cellFitness[cellC_1][1];
                 // new Born cell
 
@@ -912,8 +967,9 @@ int main()
                 cellVy[cellC_1] = cellVy[cellC_1] / 2.0;
 
                 // cellArea[cellC_1] = A_min;
-                cellPhi[cellC_1] = 0.0 ;
+                cellPhi[cellC_1] = phi_eps;
                 cellR[cellC_1] = typeR0[cellType_1];
+                cellFitness[cellC_1][0] = motherFitnessWeight * cellFitness[cellC_1][0] + inherentFitnessWeight * typeFit0[cellType_1];
                 // cellState[cellC_1] = cellState[cellC_1];
                 // original cell
 
@@ -931,22 +987,10 @@ int main()
                 {
                     cellFitness[cellC_1][0] = cellFitnessUpdated[cellC_1][0];
                     cellState[cellC_1] = CYCLING_STATE;
-                }else if (cellFitness[cellC_1][0] > Fit_Th_Apop && cellFitnessUpdated[cellC_1][0] <= Fit_Th_Apop) // It may trantition into death
+                }else if (cellFitness[cellC_1][0] > Fit_Th_Apop && cellFitnessUpdated[cellC_1][0] <= Fit_Th_Apop) // It dies
                 {
-                    deltaF = abs(cellFitnessUpdated[cellC_1][0] - cellFitness[cellC_1][0]);
-                    trans_prob = 1.0 - exp(-k_0 * deltaF * dt);
-                    uniform_rand_1 = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
-
-                    if (uniform_rand_1 < trans_prob) // transition happens (update in fitness and state)
-                    {
-                        cellFitness[cellC_1][0] = cellFitnessUpdated[cellC_1][0];
-                        cellState[cellC_1] = APOP_STATE;
-                    }
-                    else // if (uniform_rand_1 >= trans_prob)
-                    {
-                        // fitness does not get updated, but stays alive
-                        cellState[cellC_1] = CYCLING_STATE;
-                    }
+                    cellFitness[cellC_1][0] = cellFitnessUpdated[cellC_1][0];
+                    cellState[cellC_1] = APOP_STATE;
                 }
                 else // It will saty dead
                 {
@@ -960,89 +1004,33 @@ int main()
             // update of WT cells
             else //WT_CELL_TYPE: fitnesses need to be checked
             {
-                if (cellFitness[cellC_1][0] > Fit_Th_G1_arr) 
+                if (cellFitness[cellC_1][0] > Fit_Th_G0) 
                 {
-                    if (cellFitnessUpdated[cellC_1][0] > Fit_Th_G1_arr)
+                    if (cellFitnessUpdated[cellC_1][0] > Fit_Th_G0)
                     {
                         cellFitness[cellC_1][0] = cellFitnessUpdated[cellC_1][0];
                         cellState[cellC_1] = CYCLING_STATE;
                     }
-                    else
+                    else // cellFitnessUpdated[cellC_1][0] <= Fit_Th_G0
                     {
-                        if (cellPhi[cellC_1] > G1Border * 2.0 *PI) // no go to G1 arr
+                        if (cellPhi[cellC_1] > G1Border * 2.0 *PI) // no go to G0
                         {
                             cellState[cellC_1] = CYCLING_STATE;
                         }
-                        else // may go to G1 arr
+                        else // goes to G0
                         {
-                            deltaF = abs(cellFitnessUpdated[cellC_1][0] - cellFitness[cellC_1][0]);
-                            trans_prob = 1.0 - exp(-k_0 * deltaF * dt);
-                            uniform_rand_1 = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
-
-                            if (uniform_rand_1 < trans_prob) // transition happens (update in fitness and state)
-                            {
-                                cellFitness[cellC_1][0] = cellFitnessUpdated[cellC_1][0];
-                                cellState[cellC_1] = G1_ARR_STATE;
-                            }
-                            else // if (uniform_rand_1 >= trans_prob)
-                            {
-                                cellState[cellC_1] = CYCLING_STATE;
-                            }
+                            cellFitness[cellC_1][0] = cellFitnessUpdated[cellC_1][0];
+                            cellState[cellC_1] = G0_STATE;
                         }
                     }// the end of "if (cellFitnessUpdated[cellC_1][0] > Fit_Th_G1_arr){}"
                     continue;
                 } // the end of "if (cellFitness[cellC_1][0] > Fit_Th_G1_arr){}"
 
-
-                if (cellFitness[cellC_1][0] <= Fit_Th_G1_arr &&
-                    cellFitness[cellC_1][0] >  Fit_Th_G0) // if it is in G1_arr
-                {
-                    if (cellFitnessUpdated[cellC_1][0] <= Fit_Th_G1_arr &&
-                        cellFitnessUpdated[cellC_1][0] >  Fit_Th_G0) // stays in G1_arr
-                    {
-                        cellFitness[cellC_1][0] = cellFitnessUpdated[cellC_1][0];
-                        cellState[cellC_1] = G1_ARR_STATE;
-                    }
-                    else if (cellFitnessUpdated[cellC_1][0] >  Fit_Th_G1_arr) // from G1_arr goes to G1_CYC
-                    {
-                        deltaF = abs(cellFitnessUpdated[cellC_1][0] - cellFitness[cellC_1][0]);
-                        trans_prob = 1.0 - exp(-k_0 * deltaF * dt);
-                        uniform_rand_1 = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
-
-                        if (uniform_rand_1 < trans_prob) // transition happens (update in fitness and state)
-                        {
-                            cellFitness[cellC_1][0] = cellFitnessUpdated[cellC_1][0];
-                            cellState[cellC_1] = CYCLING_STATE;
-                        }
-                        else // if (uniform_rand_1 >= trans_prob)
-                        {
-                            cellState[cellC_1] = G1_ARR_STATE;
-                        }
-                    }
-                    else if (cellFitnessUpdated[cellC_1][0] < Fit_Th_G0) // from G1_arr goes to G0
-                    {
-                        deltaF = abs(cellFitnessUpdated[cellC_1][0] - cellFitness[cellC_1][0]);
-                        trans_prob = 1.0 - exp(-k_0 * deltaF * dt);
-                        uniform_rand_1 = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
-
-                        if (uniform_rand_1 < trans_prob) // transition happens (update in fitness and state)
-                        {
-                            cellFitness[cellC_1][0] = cellFitnessUpdated[cellC_1][0];
-                            cellState[cellC_1] = G0_STATE;
-                        }
-                        else // if (uniform_rand_1 >= trans_prob)
-                        {
-                            cellState[cellC_1] = G1_ARR_STATE;
-                        }
-                    }
-                    continue;
-                } // the end if "if (cellFitness[cellC_1][0] <= Fit_Th_G1_arr && cellFitness[cellC_1][0] >  Fit_Th_G0)"
-
                 if (cellFitness[cellC_1][0] <= Fit_Th_G0 &&
-                    cellFitness[cellC_1][0] >  Fit_Th_Diff) // if it is in G0
+                    cellFitness[cellC_1][0] >  Fit_Th_Apop) // if it is in G0
                 {
                     if (cellFitnessUpdated[cellC_1][0] <= Fit_Th_G0 &&
-                        cellFitnessUpdated[cellC_1][0] >  Fit_Th_Diff) // stays in G0
+                        cellFitnessUpdated[cellC_1][0] >  Fit_Th_Apop) // stays in G0
                     {
                         cellFitness[cellC_1][0] = cellFitnessUpdated[cellC_1][0];
                         cellState[cellC_1] = G0_STATE;
@@ -1051,205 +1039,13 @@ int main()
                     {
                         cellState[cellC_1] = G0_STATE;
                     }
-                    else if (cellFitnessUpdated[cellC_1][0] < Fit_Th_Diff) // from G0 goes to Diff
-                    {
-                        deltaF = abs(cellFitnessUpdated[cellC_1][0] - cellFitness[cellC_1][0]);
-                        trans_prob = 1.0 - exp(-k_0 * deltaF * dt);
-                        uniform_rand_1 = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
-
-                        if (uniform_rand_1 < trans_prob) // transition happens (update in fitness and state)
-                        {
-                            cellFitness[cellC_1][0] = cellFitnessUpdated[cellC_1][0];
-                            cellState[cellC_1] = DIFF_STATE;
-                        }
-                        else // if (uniform_rand_1 >= trans_prob)
-                        {
-                            cellState[cellC_1] = G0_STATE;
-                        }
-                    }
-                    continue;
-                } // the end if "if (cellFitness[cellC_1][0] <= Fit_Th_G0 && cellFitness[cellC_1][0] >  Fit_Th_Diff)"
-
-                if (cellFitness[cellC_1][0] <= Fit_Th_Diff &&
-                    cellFitness[cellC_1][0] >  Fit_Th_Apop) // if it is in Diff
-                {
-                    if (cellFitnessUpdated[cellC_1][0] <= Fit_Th_Diff &&
-                        cellFitnessUpdated[cellC_1][0] >  Fit_Th_Apop) // stays in Diff
+                    else if (cellFitnessUpdated[cellC_1][0] < Fit_Th_Apop) // from G0 goes to Apop
                     {
                         cellFitness[cellC_1][0] = cellFitnessUpdated[cellC_1][0];
-                        cellState[cellC_1] = DIFF_STATE;
-                    }
-                    else if (cellFitnessUpdated[cellC_1][0] >  Fit_Th_G0) // stays in Diff; cannot go higher
-                    {
-                        cellState[cellC_1] = DIFF_STATE;
-                    }
-                    else if (cellFitnessUpdated[cellC_1][0] < Fit_Th_Apop) // from Diff goes to Apop
-                    {
-                        deltaF = abs(cellFitnessUpdated[cellC_1][0] - cellFitness[cellC_1][0]);
-                        trans_prob = 1.0 - exp(-k_0 * deltaF * dt);
-                        uniform_rand_1 = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
-
-                        if (uniform_rand_1 < trans_prob) // transition happens (update in fitness and state)
-                        {
-                            cellFitness[cellC_1][0] = cellFitnessUpdated[cellC_1][0];
-                            cellState[cellC_1] = APOP_STATE;
-                        }
-                        else // if (uniform_rand_1 >= trans_prob)
-                        {
-                            cellState[cellC_1] = DIFF_STATE;
-                        }
+                        cellState[cellC_1] = APOP_STATE;
                     }
                     continue;
                 }
-
-
-            //     switch (cellState[cellC_1])
-            //     {
-            //     case CYCLING_STATE:
-            //         if ( (cellPhi[cellC_1] < G1Border * 2.0 *PI) && (cellFitness[cellC_1][0] < Fit_Th_G1_arr ) )
-            //         {
-            //             cellState[cellC_1] = G1_ARR_STATE;
-            //         }        
-            //         break;
-            //     case G1_ARR_STATE:
-            //         if (cellFitness[cellC_1][0] > Fit_Th_G1_arr )
-            //         {
-            //             cellState[cellC_1] = CYCLING_STATE;
-            //         }
-            //         else if (cellFitness[cellC_1][0] < Fit_Th_G0 )
-            //         {
-            //             cellState[cellC_1] = G0_STATE;
-            //         }
-            //         break;
-            //     case G0_STATE:
-            //         // if (cellFitness[cellC_1][0] > Fit_Th_G0 )
-            //         // {
-            //         //     cellState[cellC_1] = G1_ARR_STATE;
-            //         // }
-            //         // else if (cellFitness[cellC_1][0] < Fit_Th_Diff )
-            //         // {
-            //         //     cellState[cellC_1] = DIFF_STATE;
-            //         // }
-            //         // break;
-
-            //         if (cellFitness[cellC_1][0] < Fit_Th_Diff )
-            //         {
-            //             cellState[cellC_1] = DIFF_STATE;
-            //         }
-            //         break;
-            //     case DIFF_STATE:
-            //         if (cellFitness[cellC_1][0] < Fit_Th_Apop )
-            //         {
-            //             cellState[cellC_1] = APOP_STATE;
-            //         }
-            //         break;
-            //     case APOP_STATE:
-            //         cellState[cellC_1] = APOP_STATE;
-            //         break;
-            //     } // the end of "switch (cellState[cellC_1])"
-            // } // the end of "if (cellType_1 == CA_CELL_TYPE){} else{}"
-            // // update of WT cells
-
-
-            // // update of WT cells
-            // else //WT_CELL_TYPE: fitnesses need to be checked
-            // {
-            //     switch (cellState[cellC_1])
-            //     {
-            //     case CYCLING_STATE:
-            //         if ( (cellPhi[cellC_1] < G1Border * 2.0 *PI) && (cellFitness[cellC_1][0] < Fit_Th_G1_arr ) )
-            //         {
-            //             cellState[cellC_1] = G1_ARR_STATE;
-            //         }        
-            //         break;
-            //     case G1_ARR_STATE:
-            //         if (cellFitness[cellC_1][0] > Fit_Th_G1_arr )
-            //         {
-            //             cellState[cellC_1] = CYCLING_STATE;
-            //         }
-            //         else if (cellFitness[cellC_1][0] < Fit_Th_G0 )
-            //         {
-            //             cellState[cellC_1] = G0_STATE;
-            //         }
-            //         break;
-            //     case G0_STATE:
-            //         // if (cellFitness[cellC_1][0] > Fit_Th_G0 )
-            //         // {
-            //         //     cellState[cellC_1] = G1_ARR_STATE;
-            //         // }
-            //         // else if (cellFitness[cellC_1][0] < Fit_Th_Diff )
-            //         // {
-            //         //     cellState[cellC_1] = DIFF_STATE;
-            //         // }
-            //         // break;
-
-            //         if (cellFitness[cellC_1][0] < Fit_Th_Diff )
-            //         {
-            //             cellState[cellC_1] = DIFF_STATE;
-            //         }
-            //         break;
-            //     case DIFF_STATE:
-            //         if (cellFitness[cellC_1][0] < Fit_Th_Apop )
-            //         {
-            //             cellState[cellC_1] = APOP_STATE;
-            //         }
-            //         break;
-            //     case APOP_STATE:
-            //         cellState[cellC_1] = APOP_STATE;
-            //         break;
-            //     } // the end of "switch (cellState[cellC_1])"
-            // } // the end of "if (cellType_1 == CA_CELL_TYPE){} else{}"
-            // // update of WT cells
-            
-
-
-
-            // if (cellPhi[cellC_1] < 2.0 *PI)
-            // {
-                
-            //     cellArea[cellC_1] = A_min + (A_max - A_min) * 0.5 * (1 - cos(cellPhi[cellC_1]/2.0));
-            //     cellR[cellC_1] = pow(cellArea[cellC_1] / PI, 0.5);
-
-            // } else // CELL DIVISION
-            // {
-            //     rand_divison_angle = (((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN)) * (2.0 * PI);
-
-            //     daughterX_1 = cellX[cellC_1] + (cellR[cellC_1] / 1.4142) * cos(rand_divison_angle);
-            //     daughterY_1 = cellY[cellC_1] + (cellR[cellC_1] / 1.4142) * sin(rand_divison_angle);
-            //     daughterX_2 = cellX[cellC_1] - (cellR[cellC_1] / 1.4142) * cos(rand_divison_angle);
-            //     daughterY_2 = cellY[cellC_1] - (cellR[cellC_1] / 1.4142) * sin(rand_divison_angle);
-                
-            //     // new Born cell
-            //     cellType[newBornInd] = cellType_1;
-
-            //     cellX[newBornInd] = daughterX_2;
-            //     cellY[newBornInd] = daughterY_2;
-
-            //     cellVx[newBornInd] = cellVx[cellC_1] / 2.0;
-            //     cellVy[newBornInd] = cellVy[cellC_1] / 2.0;
-
-            //     cellArea[newBornInd] = A_min;
-            //     cellR[newBornInd] = typeR0[cellType_1];
-
-            //     cellFitness[newBornInd][0] = 0.0;
-            //     cellFitness[newBornInd][1] = 0.0;
-            //     // new Born cell
-
-            //     // original cell
-            //     cellX[cellC_1] = daughterX_1;
-            //     cellY[cellC_1] = daughterY_1;
-
-            //     cellVx[cellC_1] = cellVx[cellC_1] / 2.0;
-            //     cellVy[cellC_1] = cellVy[cellC_1] / 2.0;
-
-            //     cellArea[cellC_1] = A_min;
-            //     cellR[cellC_1] = typeR0[cellType_1];
-
-            //     cellPhi[cellC_1] = 0.0 ;
-            //     // original cell
-
-            //     newBornInd++;
-            //     newBornCells++;
             }
         } // the end of "for (cellC_1 = 0; cellC_1 < NCells; cellC_1++)" for State update and cell division operations.
 
@@ -1595,49 +1391,52 @@ void readConfigFile(const std::string& filename, Config& config) {
             config.typeR0 = parseVector(value);
         } else if (key == "typeR2PI") {
             config.typeR2PI = parseVector(value);
+        } else if (key == "typeTypeEpsilon") {
+            config.typeTypeEpsilon = parseMatrix(value);
+        //////////////////////////////////////////////////
         } else if (key == "typeGamma") {
             config.typeGamma = parseVector(value);
         } else if (key == "typeTypeGammaCC") {
             config.typeTypeGammaCC = parseMatrix(value);
-        } else if (key == "typeTypeEpsilon") {
-            config.typeTypeEpsilon = parseMatrix(value);
-        } else if (key == "typeFm") {
-            config.typeFm = parseVector(value);
-        } else if (key == "typeDr") {
-            config.typeDr = parseVector(value);
-        } else if (key == "R_eq_coef") {
-            config.R_eq_coef = std::stod(value);
-        } else if (key == "R_cut_coef_force") {
-            config.R_cut_coef_force = std::stod(value);
-        } else if (key == "R_cut_coef_game") {
-            config.R_cut_coef_game = std::stod(value);
         } else if (key == "typeTypeF_rep_max") {
             config.typeTypeF_rep_max = parseMatrix(value);
         } else if (key == "typeTypeF_abs_max") {
             config.typeTypeF_abs_max = parseMatrix(value);
-        } else if (key == "typeTypePayOff_mat_real_C") {
-            config.typeTypePayOff_mat_real_C = parseMatrix(value);
-        } else if (key == "typeTypePayOff_mat_real_F1") {
-            config.typeTypePayOff_mat_real_F1 = parseMatrix(value);
-        } else if (key == "typeTypePayOff_mat_real_F2") {
-            config.typeTypePayOff_mat_real_F2 = parseMatrix(value);
-        } else if (key == "typeTypePayOff_mat_imag_C") {
-            config.typeTypePayOff_mat_imag_C = parseMatrix(value);
-        } else if (key == "typeTypePayOff_mat_imag_F1") {
-            config.typeTypePayOff_mat_imag_F1 = parseMatrix(value);
-        } else if (key == "typeTypePayOff_mat_imag_F2") {
-            config.typeTypePayOff_mat_imag_F2 = parseMatrix(value);
-        } else if (key == "typeOmega0") {
-            // config.typeOmega0 = parseVector(value);
-            {}
-        } else if (key == "typeOmegaLim") {
-            // config.typeOmegaLim = parseVector(value);
-            {}
+        } else if (key == "R_eq_coef") {
+            config.R_eq_coef = std::stod(value);
+        } else if (key == "R_cut_coef_force") {
+            config.R_cut_coef_force = std::stod(value);
+        //////////////////////////////////////////////////
+        } else if (key == "typeFm") {
+            config.typeFm = parseVector(value);
+        } else if (key == "typeDr") {
+            config.typeDr = parseVector(value);
+        //////////////////////////////////////////////////
+        } else if (key == "G1Border") {
+            config.G1Border = stod(value);
+        //////////////////////////////////////////////////
+        } else if (key == "typeOmega") {
+            config.typeOmega = parseVector(value);
+        } else if (key == "typeBarrierW") {
+            config.typeBarrierW = parseVector(value);
+        } else if (key == "typeSigmaPhi") {
+            config.typeSigmaPhi = parseVector(value);
+        } else if (key == "typeSigmaFit") {
+            config.typeSigmaFit = parseVector(value);
+        } else if (key == "barrierPeakCoef") {
+            config.barrierPeakCoef = stod(value);
+
         } else if (key == "typeFit0") {
             config.typeFit0 = parseVector(value);
-        } else if (key == "typeFitLim") {
-            // config.typeFitLim = parseVector(value);
-            {}
+        } else if (key == "Fit_Th_Wall") {
+            config.Fit_Th_Wall = std::stod(value);
+        } else if (key == "Fit_Th_G0") {
+            config.Fit_Th_G0 = std::stod(value);
+        } else if (key == "Fit_Th_Diff") {
+            config.Fit_Th_Diff = std::stod(value);
+        } else if (key == "Fit_Th_Apop") {
+            config.Fit_Th_Apop = std::stod(value);
+        //////////////////////////////////////////////////
         } else if (key == "maxTime") {
             config.maxTime = std::stod(value);
         } else if (key == "dt") {
@@ -1650,37 +1449,30 @@ void readConfigFile(const std::string& filename, Config& config) {
             config.writePerZip = std::stoi(value);
         } else if (key == "printingTimeInterval") {
             config.printingTimeInterval = std::stod(value);
-        } else if (key == "typeGameNoiseSigma") {
-            config.typeGameNoiseSigma = parseVector(value);
-        } else if (key == "PhiNoiseSigma") {
-            // config.PhiNoiseSigma = std::stod(value);
-            {}
-        } else if (key == "G1Border") {
-            config.G1Border = std::stod(value);
-        } else if (key == "omegaThG1_arr") {
-            // config.omegaThG1_arr = std::stod(value);
-            {}
-        } else if (key == "omegaThG0") {
-            // config.omegaThG0 = std::stod(value);
-            {}
-        } else if (key == "omegaThDiff") {
-            // config.omegaThDiff = std::stod(value);
-            {}
-        } else if (key == "omegaThApop") {
-            // config.omegaThApop = std::stod(value);
-            {}
-        } else if (key == "Fit_Th_G1_arr") {
-            config.Fit_Th_G1_arr = std::stod(value);
-        } else if (key == "Fit_Th_G0") {
-            config.Fit_Th_G0 = std::stod(value);
-        } else if (key == "Fit_Th_Diff") {
-            config.Fit_Th_Diff = std::stod(value);
-        } else if (key == "Fit_Th_Apop") {
-            config.Fit_Th_Apop = std::stod(value);
-        } else if (key == "initConfig") {
-            config.initConfig = value;
+        //////////////////////////////////////////////////
+        } else if (key == "R_cut_coef_game") {
+            config.R_cut_coef_game = std::stod(value);
         } else if (key == "tau") {
             config.tau = std::stod(value);
+        } else if (key == "typeTypePayOff_mat_real_C") {
+            config.typeTypePayOff_mat_real_C = parseMatrix(value);
+        } else if (key == "typeTypePayOff_mat_real_F1") {
+            config.typeTypePayOff_mat_real_F1 = parseMatrix(value);
+        } else if (key == "typeTypePayOff_mat_real_F2") {
+            config.typeTypePayOff_mat_real_F2 = parseMatrix(value);
+        } else if (key == "typeTypePayOff_mat_imag_C") {
+            config.typeTypePayOff_mat_imag_C = parseMatrix(value);
+        } else if (key == "typeTypePayOff_mat_imag_F1") {
+            config.typeTypePayOff_mat_imag_F1 = parseMatrix(value);
+        } else if (key == "typeTypePayOff_mat_imag_F2") {
+            config.typeTypePayOff_mat_imag_F2 = parseMatrix(value);
+        //////////////////////////////////////////////////
+        } else if (key == "newBornFitKey") {
+            config.newBornFitKey = value;
+        //////////////////////////////////////////////////
+        } else if (key == "initConfig") {
+            config.initConfig = value;
+        
         }
     }
 }

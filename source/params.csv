@@ -21,19 +21,25 @@ typeDr = [1.0, 1.0]
 ############### SELF-PROPULSION ##############
 
 ############### G1 phase border / (2*PI) ##############
-G1Border = 0.50
+G1Border = 0.40
 ############### G1 phase border / (2*PI) ##############
 
-############### THRESHOLD FITNESSES ##############
+############### POTENTIAL LANDSCAPE ##############
+typeOmega = [0.36, 0.36]
+typeBarrierW = [0.3, 0.3]
+typeSigmaPhi = [0.05, 0.05]
+typeSigmaFit = [0.01, 0.01]
+barrierPeakCoef = 0.1
+
 typeFit0 = [0.36, 0.41]
-Fit_Th_G1_arr = 0.35
+Fit_Th_Wall = 0.35
 Fit_Th_G0 = 0.18
 Fit_Th_Diff = 0.15
 Fit_Th_Apop = 0.12
-############### THRESHOLD FITNESSES ##############
+############### POTENTIAL LANDSCAPE ##############
 
 ############### TIMING & SAMPLING ##############
-maxTime = 70.1
+maxTime = 30.1
 dt = 0.001
 dt_sample = 0.5
 samplesPerWrite = 20
@@ -43,8 +49,7 @@ printingTimeInterval = 1.0
 
 ############### GAME ##############
 R_cut_coef_game = 1.1
-typeGameNoiseSigma = [0.05, 0.08]
-tau = 10
+tau = 999999
 typeTypePayOff_mat_real_C = [[0.000, -0.0225];[0.0225, 0.00]]
 typeTypePayOff_mat_real_F1 = [[-0.00, 0];[0, -0.00]]
 typeTypePayOff_mat_real_F2 = [[0.00, 0];[0, 0.00]]
@@ -53,9 +58,16 @@ typeTypePayOff_mat_imag_F1 = [[0.000, 0.0];[0.0, 0.00]]
 typeTypePayOff_mat_imag_F2 = [[0.000, 0.0];[0.0, 0.00]]
 ############### GAME ##############
 
+############### NEWBORN FITNESS ##############
+newBornFitKey = ec
+############### NEWBORN FITNESS ##############
+
 ############### INITIALIZAION ##############
 initConfig = read
 ############### INITIALIZAION ##############
 
+
+
 ##********  put ONE (and just ONE) space at each side of each "=" ********
 ##********  initConfig: read (reads), gen (generates) ********
+##********  newBornFitKey: ec (economic), FI (full inheritence), r (resets to inherent value)********

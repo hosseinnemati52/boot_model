@@ -1,3 +1,3 @@
 #!/bin/bash
 
-./Organoid
+./Organoid_boot
