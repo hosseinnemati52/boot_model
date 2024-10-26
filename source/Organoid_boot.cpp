@@ -575,7 +575,7 @@ int main()
     unsigned long long int_rand_1, int_rand_2;
     double uniform_rand_1, uniform_rand_2, gauss_rand_1, gauss_rand_2; // for Box-Muller transform
     double SyncTerm;
-    double phiNoise, fitNoise, peakFactor, deltaPhi, phiMid;
+    double phiNoise, fitNoise, peakFactor, deltaPhi, phiMid, barrierSTD, funcOld, funcNew;
     // k_0 = 1.0 / (1.0e-5);
 
     // for identifying immediate neighbors
@@ -781,21 +781,51 @@ int main()
                 fitNoise = typeSigmaFit[cellType_1] * sqrt_dt * gauss_rand_2;
                 // noises calc
 
-                peakFactor = (barrierPeakCoef / (cellFitness[cellC_1][0]-Fit_Th_Wall) ) / (2.506628 * pow(typeBarrierW[cellType_1], 3));
-                // 2.506628 = sqrt(2*PI)
+                barrierSTD = typeBarrierW[cellType_1]/2.0; // the width of barrier is twice as the std of it.
+
+                if (cellFitness[cellC_1][0] > Fit_Th_Wall + fit_eps)
+                {
+                    peakFactor = (barrierPeakCoef / (cellFitness[cellC_1][0]-Fit_Th_Wall) ) / (2.506628 * pow(barrierSTD, 3));
+                    // 2.506628 = sqrt(2*PI)
+                } else
+                {
+                    peakFactor = (barrierPeakCoef / (fit_eps) ) / (2.506628 * pow(barrierSTD, 3));
+                    // 2.506628 = sqrt(2*PI)
+                }
+                // if (peakFactor < 0)
+                // {
+                //     cout<<"######################"<<endl;
+                //     cout<<"peakFactor < 0"<<endl;
+                //     cout<<"cellFitness[cellC_1][0] = "<<cellFitness[cellC_1][0]<<endl;
+                //     cout<<"######################"<<endl;
+                // }
+                
+                
+                
 
                 // prediction (first step for phi)
                 deltaPhi = (cellPhi[cellC_1] - G1Border*2*PI);
+                funcOld = (typeOmega[cellType_1] + peakFactor * deltaPhi * exp(- deltaPhi * deltaPhi / (2 * barrierSTD * barrierSTD)) + cellSync[cellC_1]);
                 phiMid = cellPhi[cellC_1] + \
-                        dt * (typeOmega[cellType_1] + peakFactor * deltaPhi * exp(- deltaPhi * deltaPhi / (2 * barrierPeakCoef * barrierPeakCoef)) + cellSync[cellC_1]) + \
+                        dt * funcOld + \
                         phiNoise;
                 
                 // correction (second step for phi)
                 deltaPhi = (phiMid - G1Border*2*PI);
+                funcNew = (typeOmega[cellType_1] + peakFactor * deltaPhi * exp(- deltaPhi * deltaPhi / (2 * barrierSTD * barrierSTD)) + cellSync[cellC_1]);
                 cellPhiUpdated[cellC_1] = cellPhi[cellC_1] + \
-                                        dt * (typeOmega[cellType_1] + peakFactor * deltaPhi * exp(- deltaPhi * deltaPhi / (2 * barrierPeakCoef * barrierPeakCoef)) + cellSync[cellC_1]) + \
+                                        dt * 0.5 * (funcOld + funcNew) + \
                                         phiNoise;
                 
+                // if (cellPhiUpdated[cellC_1] > G1Border*2*PI && cellPhi[cellC_1] < G1Border*2*PI)
+                // {
+                //     cout<<"######################"<<endl;
+                //     cout<<"cellFitness[cellC_1][0] = "<<cellFitness[cellC_1][0]<<endl;
+                //     cout<<"peakFactor = "<<peakFactor<<endl;
+                //     cout<<"######################"<<endl;
+                // }
+                
+
                 if (cellPhiUpdated[cellC_1] < 0)
                 {
                     cellPhiUpdated[cellC_1] = phi_eps;
@@ -807,9 +837,17 @@ int main()
                 //                                             cellJ[cellC_1] + \
                 //                                             (-1.0 / tau) * (cellFitness[cellC_1][0] - typeFit0[cellType_1]) 
                 //                                         );
+                
                 cellFitnessUpdated[cellC_1][0] = cellFitness[cellC_1][0] + \
                                                 fitNoise + \
                                                 dt * cellJ[cellC_1];
+                
+                if (   (abs(cellPhiUpdated[cellC_1] - G1Border*2*PI) < barrierSTD ) \
+                    && (cellFitnessUpdated[cellC_1][0] < Fit_Th_Wall + fit_eps ) )
+                {
+                    cellFitnessUpdated[cellC_1][0] = cellFitness[cellC_1][0];
+                }
+                
 
             }
             else // if it is dead, nothing updates

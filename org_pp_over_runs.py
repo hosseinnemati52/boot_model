@@ -617,7 +617,7 @@ def overal_saver():
     
     return
 
-N_runs = 20
+N_runs = 5
 time = np.loadtxt("run_1/pp_data/time.txt", delimiter=',', dtype=float)
 N_samples = len(time)
 
@@ -678,7 +678,7 @@ for runC in range(N_runs):
     
 
 ## overal plot
-exp_data_load_switch = 1
+exp_data_load_switch = 0
 save_switch = 1
 overal_plotter(exp_data_load_switch, save_switch)
 ## overal plot

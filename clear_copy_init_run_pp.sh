@@ -1,5 +1,5 @@
-declare -i N=20
-declare -i N0=5
+declare -i N=5
+declare -i N0=1
 
 #
 for i in $(seq $N0 $N); do
@@ -26,12 +26,14 @@ for i in $(seq $N0 $N); do
 	cd ..
 done
 #
+
+./terminal_opener.sh
 #
-for i in $(seq $N0 $N); do
-	cd "run_$i"
-	./do_all.sh
-	cd ..
-done
+#for i in $(seq $N0 $N); do
+#	cd "run_$i"
+#	./do_all.sh
+#	cd ..
+#done
 #
 python3 org_pp_over_runs.py
 

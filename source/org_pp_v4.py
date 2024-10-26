@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Created on Wed Oct 16 17:09:51 2024
+
+@author: hossein
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
 Created on Tue Jul 30 09:22:25 2024
 
 @author: hossein
@@ -98,8 +106,13 @@ def read_custom_csv(filename):
     
     G1Border = variables.get('G1Border', None)
     
+    typeOmega = variables.get('typeOmega', None)
+    typeBarrierW = variables.get('typeBarrierW', None)
+    typeSigmaPhi = variables.get('typeSigmaPhi', None)
+    typeSigmaFit = variables.get('typeSigmaFit', None)
+    barrierPeakCoef = variables.get('barrierPeakCoef', None)
     typeFit0 = variables.get('typeFit0', None)
-    Fit_Th_G1_arr = variables.get('Fit_Th_G1_arr', None)
+    Fit_Th_Wall = variables.get('Fit_Th_Wall', None)
     Fit_Th_G0 = variables.get('Fit_Th_G0', None)
     Fit_Th_Diff = variables.get('Fit_Th_Diff', None)
     Fit_Th_Apop = variables.get('Fit_Th_Apop', None)
@@ -111,7 +124,6 @@ def read_custom_csv(filename):
     printingTimeInterval = variables.get('printingTimeInterval', None)
     
     R_cut_coef_game = variables.get('R_cut_coef_game', None)
-    GameNoiseSigma = variables.get('GameNoiseSigma', None)
     tau = variables.get('tau', None)
     typeTypePayOff_mat_real_C = variables.get('typeTypePayOff_mat_real_C', None)
     typeTypePayOff_mat_real_F1 = variables.get('typeTypePayOff_mat_real_F1', None)
@@ -122,6 +134,7 @@ def read_custom_csv(filename):
     
     # typeOmega0 = variables.get('typeOmega0', None)
     # typeOmegaLim = variables.get('typeOmegaLim', None)
+    newBornFitKey = variables.get('newBornFitKey', None)
     
     initConfig = variables.get('initConfig', None)
     
@@ -144,8 +157,13 @@ def read_custom_csv(filename):
         
         'G1Border' : G1Border,
         
+        'typeOmega' : typeOmega,
+        'typeBarrierW' : typeBarrierW,
+        'typeSigmaPhi' : typeSigmaPhi,
+        'typeSigmaFit' : typeSigmaFit,
+        'barrierPeakCoef' : barrierPeakCoef,
         'typeFit0' : typeFit0,
-        'Fit_Th_G1_arr' : Fit_Th_G1_arr,
+        'Fit_Th_Wall' : Fit_Th_Wall,
         'Fit_Th_G0' : Fit_Th_G0,
         'Fit_Th_Diff' : Fit_Th_Diff,
         'Fit_Th_Apop' : Fit_Th_Apop,
@@ -155,11 +173,8 @@ def read_custom_csv(filename):
         'dt_sample': dt_sample,
         'samplesPerWrite': samplesPerWrite,
         'printingTimeInterval': printingTimeInterval,
-        
-        'R_cut_coef_game': R_cut_coef_game,
-        
+                
         'R_cut_coef_game' : R_cut_coef_game,
-        'GameNoiseSigma' : GameNoiseSigma,
         'tau' :tau,
         'typeTypePayOff_mat_real_C' :typeTypePayOff_mat_real_C,
         'typeTypePayOff_mat_real_F1' :typeTypePayOff_mat_real_F1,
@@ -168,15 +183,57 @@ def read_custom_csv(filename):
         'typeTypePayOff_mat_imag_F1' :typeTypePayOff_mat_imag_F1,
         'typeTypePayOff_mat_imag_F2' :typeTypePayOff_mat_imag_F2,
         
+        'newBornFitKey' : newBornFitKey,
+        
         'initConfig': initConfig
     }
+
+def read_custom_csv_pp(filename):
+    # Initialize dictionary to hold variables
+    variables = {}
+    
+    # Read the file
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+        
+        for line in lines:
+            # Skip comments or empty lines
+            if line.strip() == '' or line.strip().startswith('##'):
+                continue
+            
+            # Split the line into key and value
+            key, value = line.split('=', 1)
+            key = key.strip()
+            value = value.strip()
+            
+            # Process based on the type of the value
+            if value.startswith('[') and value.endswith(']'):
+                # This is a list or array
+                variables[key] = parse_array(value)
+                
+            elif re.match(r'^[\d.]+$', value):
+                # This is a number (int or float)
+                variables[key] = float(value) if '.' in value else int(value)
+            
+            elif re.match(r'^[\w]+$', value):
+                # This is a string or keyword
+                variables[key] = value
+            
+    # Extract variables from the dictionary
+    frame_plot_switch = variables.get('frame_plot_switch', None)
+    
+    
+    return {
+        'frame_plot_switch': frame_plot_switch
+            }
 
 def stats_plotter(fileName):
     
     plt.figure()
     
     plt.plot(time, alive_stat, label='tot')
-    plt.plot(time, C_stat, label='Ca', color='g')
+    plt.plot(time, C_alive_stat, label='Ca', color='g')
+    plt.plot(time, C_apop_stat, label='Ca_apop', linestyle='dashed')
     plt.plot(time, WT_alive_stat, label='WT', color='m')
     plt.plot(time, WT_cyc_stat, label='WT_cyc', linestyle='dashed')
     plt.plot(time, WT_g1_cyc_stat, label='WT_g1_cyc', linestyle='dashed')
@@ -184,7 +241,9 @@ def stats_plotter(fileName):
     plt.plot(time, WT_g1_tot_stat, label='WT_g1_tot', linestyle='dashed')
     plt.plot(time, WT_g0_stat, label='WT_g0', linestyle='dashed')
     plt.plot(time, WT_diff_stat, label='WT_diff', linestyle='dashed')
+    plt.plot(time, WT_diff_stat+WT_g0_stat, label='WT_g0_diff', linestyle='dashed')
     plt.plot(time, WT_apop_stat, label='WT_apop')
+    plt.plot(time, WT_sg2m_stat, label='WT_sg2m', linestyle='dashed')
     
     plt.xlabel("time (h)")
     plt.ylabel("Number")
@@ -198,7 +257,7 @@ def stats_plotter(fileName):
     plt.figure()
     
     plt.plot(time, alive_stat/alive_stat[0], label='tot')
-    plt.plot(time, C_stat/C_stat[0], label='Ca', color='g')
+    plt.plot(time, C_alive_stat/C_alive_stat[0], label='Ca', color='g')
     plt.plot(time, WT_alive_stat/WT_alive_stat[0], label='WT', color='m')
     # plt.plot(time, WT_cyc_stat/WT_cyc_stat[0], label='WT_cyc', linestyle='dashed')
     # plt.plot(time, WT_g1_cyc_stat/WT_g1_cyc_stat[0], label='WT_g1_cyc', linestyle='dashed')
@@ -219,8 +278,10 @@ def stats_plotter(fileName):
     
     plt.figure()
     plt.plot(time, WT_g1_tot_stat/WT_alive_stat, label='g1_frac')
-    plt.plot(time, WT_g0_stat/WT_alive_stat, label='g0_frac')
-    plt.plot(time, WT_diff_stat/WT_alive_stat, label='diff_frac')
+    # plt.plot(time, WT_g0_stat/WT_alive_stat, label='g0_frac')
+    # plt.plot(time, WT_diff_stat/WT_alive_stat, label='diff_frac')
+    plt.plot(time, (WT_g0_stat+WT_diff_stat)/WT_alive_stat, label='g0_diff_frac')
+    plt.plot(time, (WT_sg2m_stat)/WT_alive_stat, label='sg2m_frac')
     
     plt.xlabel("time (h)")
     plt.ylabel("fractions")
@@ -245,8 +306,8 @@ def plotter(t, snapshotInd):
     
     fig, (ax1, ax2) = plt.subplots(1, 2)
     
-    WT_indices = (cellType==0)
-    C_indices = (cellType==1)
+    WT_indices = (cellType==WT_CELL_TYPE) & (cellState!=APOP_STATE)
+    C_indices = (cellType==CA_CELL_TYPE) & (cellState!=APOP_STATE)
     
     thresh = 1e-8
     
@@ -293,9 +354,13 @@ def plotter(t, snapshotInd):
             # normalized_fitness = normWT(cellFitness[i][0])
             normalized_fitness = normWT(0.5* ( cellFitness[i][0] +  WT_fitness_max))
             color = cm.Purples(normalized_fitness) 
-
-        circle = patches.Circle((cellX[i], cellY[i]), radius=cellR[i], edgecolor='k', facecolor=color, alpha=0.8)
-        ax1.add_patch(circle)
+        
+        if cellState[i]==DIFF_STATE or cellState[i]==G0_STATE:
+            polgon = patches.RegularPolygon((cellX[i], cellY[i]),numVertices=5, radius=cellR[i], edgecolor='k', facecolor=color, alpha=0.8)
+            ax1.add_patch(polgon)
+        else:
+            circle = patches.Circle((cellX[i], cellY[i]), radius=cellR[i], edgecolor='k', facecolor=color, alpha=0.8)
+            ax1.add_patch(circle)
     # plt.scatter(x_sph, y_sph, s=size_vec, c=cell_sph, alpha=1, cmap='viridis')
     ax1.axis("equal")
     # plt.xlim((0,Lx))
@@ -319,10 +384,10 @@ def plotter(t, snapshotInd):
     # ax1.title(title)
     # ax1.grid()
     
-    ax2.plot(time, WT/WT[0], label='WT(t)/WT(0)', color='violet')
-    ax2.plot(time, Cancer/Cancer[0], label='C(t)/C(0)', color='g')
-    ax2.plot(time, Cancer/(Cancer+WT), label='C(t)/tot(t)', color='g', linestyle='dashed')
-    ax2.plot(time, WT/(Cancer+WT), label='WT(t)/tot(t)', color='violet', linestyle='dashed')
+    ax2.plot(time, WT_alive_stat[:len(time)]/WT_alive_stat[0], label='WT(t)/WT(0)', color='violet')
+    ax2.plot(time, C_alive_stat[:len(time)]/C_alive_stat[0], label='C(t)/C(0)', color='g')
+    ax2.plot(time, C_alive_stat[:len(time)]/alive_stat[:len(time)], label='C(t)/tot(t)', color='g', linestyle='dashed')
+    ax2.plot(time, WT_alive_stat[:len(time)]/alive_stat[:len(time)], label='WT(t)/tot(t)', color='violet', linestyle='dashed')
     ax2.set_yscale("log")
     
     ax2.legend()
@@ -338,15 +403,174 @@ def plotter(t, snapshotInd):
     
     return 0
 
+def landscape_plotter(t, snapshotInd):
+    # size_vec = np.zeros(N_sph_tot)
+    # scale = 4
+
+    # norm = mcolors.Normalize(vmin=cell_sph.min(), vmax=cell_sph.max())
+    # cmap = cm.viridis
+    
+    # fig, ax = plt.subplots()
+    
+    normalize_factor = 0.01
+    
+    fig, (ax1) = plt.subplots(1, 1)
+    
+    
+    
+    WT_indices = (cellType==WT_CELL_TYPE) & (cellState!=APOP_STATE)
+    C_indices = (cellType==CA_CELL_TYPE) & (cellState!=APOP_STATE)
+    
+    thresh = 1e-8
+    
+    if len(WT_indices[WT_indices==1])>0:
+        WT_fitness_max = np.max(cellFitness[WT_indices, 0])
+        WT_fitness_min = np.min(cellFitness[WT_indices, 0])
+        
+        if abs(WT_fitness_max-WT_fitness_min)<thresh:
+            WT_fitness_max = WT_fitness_min + thresh
+    else:
+        WT_fitness_max = 0
+        WT_fitness_min = 0
+    
+    
+    
+    if len(C_indices[C_indices==1])>0:
+        C_fitness_max = np.max(cellFitness[C_indices, 0])
+        C_fitness_min = np.min(cellFitness[C_indices, 0])
+        
+        if abs(C_fitness_max-C_fitness_min)<thresh:
+            C_fitness_max = C_fitness_min + thresh
+    else:
+        C_fitness_max = 0
+        C_fitness_min = 0
+    
+    
+    normWT = mcolors.Normalize(vmin = WT_fitness_min , vmax = WT_fitness_max)
+    normC  = mcolors.Normalize(vmin =  C_fitness_min , vmax =  C_fitness_max)
+
+    for i in range(NCells):
+        # # size_vec[i] = scale * r_spheres[type_sph[i]]
+        # circle = patches.Circle((cellX[i], cellY[i]), radius=cellR[i], edgecolor='k', facecolor='g'*(cellType[i]) + 'violet'*(1-cellType[i]), alpha=0.8)
+        # ax1.add_patch(circle)
+        
+        if cellState[i]==APOP_STATE:
+            continue
+        
+        
+        if cellType[i] == 1:
+            # normalized_fitness = normC(cellFitness[i][0])
+            normalized_fitness = normC(0.5* ( cellFitness[i][0] + C_fitness_max))
+            color = cm.Greens(normalized_fitness) 
+        else:
+            # normalized_fitness = normWT(cellFitness[i][0])
+            normalized_fitness = normWT(0.5* ( cellFitness[i][0] +  WT_fitness_max))
+            color = cm.Purples(normalized_fitness) 
+        
+        if cellState[i]==DIFF_STATE or cellState[i]==G0_STATE:
+            # polgon = patches.RegularPolygon((cellPhi[i], cellFitness[i,0]),numVertices=5, radius=normalize_factor*cellR[i], edgecolor='k', facecolor=color, alpha=0.8)
+            # ax1.add_patch(polgon)
+            plt.scatter(cellPhi[i], cellFitness[i,0], alpha=0.8, color = color, marker = "p", zorder=10)
+        else:
+            # circle = patches.Circle((cellPhi[i], cellFitness[i,0]), radius=normalize_factor*cellR[i], edgecolor='k', facecolor=color, alpha=0.8)
+            # ax1.add_patch(circle)
+            plt.scatter(cellPhi[i], cellFitness[i,0], alpha=0.8, color = color, marker = "o", zorder=10)
+    # plt.scatter(x_sph, y_sph, s=size_vec, c=cell_sph, alpha=1, cmap='viridis')
+    # ax1.axis("equal")
+    # plt.xlim((0,Lx))
+    # plt.ylim((0,Ly))
+    # ax1.set_aspect('equal', adjustable='box')
+    
+    x_min = 0
+    x_max = 2*np.pi
+    
+    y_min = variables['Fit_Th_Apop']
+    y_max = 1.5*variables['typeFit0'][1]
+    
+    x_G1_Border = 2*np.pi * variables['G1Border']
+    rect_width = variables['typeBarrierW'][0]
+    rect_height = variables['Fit_Th_Wall']-y_min
+    LB_of_rect_x = x_G1_Border-0.5*rect_width
+    LB_of_rect_y = y_min
+    
+    plt.plot([x_min, x_G1_Border], [y_min, y_min], linestyle='dashed', color='k')
+    plt.plot([x_min, x_min], [y_min, y_max], linestyle='dashed', color='k')
+    plt.plot([x_max, x_max], [y_min, y_max], linestyle='dashed', color='k')
+    plt.plot([x_G1_Border, x_G1_Border], [y_min, y_max], linestyle='dashed', color='k')
+    rect = patches.Rectangle((LB_of_rect_x, LB_of_rect_y), rect_width, rect_height, linewidth=0.01, edgecolor='orange', facecolor='orange', alpha=0.4, zorder=1)
+    plt.gca().add_patch(rect)
+
+    plt.plot([x_min, x_max], [variables['Fit_Th_Wall'],variables['Fit_Th_Wall']], linestyle='dashed', color='k')
+    plt.plot([x_min, x_max], [variables['Fit_Th_G0'],variables['Fit_Th_G0']], linestyle='dashed', color='k')
+    # plt.plot([x_G1_Border, x_G1_Border], [y_min,variables['Fit_Th_G1_arr']], linestyle='dashed', color='k')
+    # plt.plot([x_min, x_G1_Border], [variables['Fit_Th_G0'],variables['Fit_Th_G0']], linestyle='dashed', color='k')
+    plt.plot([x_min, x_max], [variables['Fit_Th_Diff'],variables['Fit_Th_Diff']], linestyle='dashed', color='k')
+    plt.plot([x_min, x_max], [variables['Fit_Th_Apop'],variables['Fit_Th_Apop']], linestyle='dashed', color='k')
+    
+    
+    margin_x = 0.1
+    margin_y = 0.1
+    
+    ax1.set_xlim((x_min-margin_x, x_max+margin_x))
+    ax1.set_ylim((y_min-margin_y, y_max+5*margin_y))
+    
+    # sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    # sm.set_array(cell_sph)
+    # cbar = plt.colorbar(sm, ax=ax)
+    # cbar.set_label('Cell Value')
+
+    ax1.set_xlabel(r'$\phi$')
+    ax1.set_ylabel('Fitness')
+    
+    title = 't = {:.3f}'.format(t)
+    ax1.set_title(title)
+    # ax1.set_title('Colored Scatter Plot with Circles')
+    # plt.colorbar()  # Show color scale
+    
+    # file_name = 'frames/frame_'+str(int(snapshotInd))+'.PNG'
+    file_name = 'fit_land/frame_'+str(int(snapshotInd))+'.PNG'
+    # ax1.title(title)
+    # ax1.grid()
+    
+    # ax2.plot(time, WT_alive_stat[:len(time)]/WT_alive_stat[0], label='WT(t)/WT(0)', color='violet')
+    # ax2.plot(time, C_alive_stat[:len(time)]/C_alive_stat[0], label='C(t)/C(0)', color='g')
+    # ax2.plot(time, C_alive_stat[:len(time)]/alive_stat[:len(time)], label='C(t)/tot(t)', color='g', linestyle='dashed')
+    # ax2.plot(time, WT_alive_stat[:len(time)]/alive_stat[:len(time)], label='WT(t)/tot(t)', color='violet', linestyle='dashed')
+    # ax2.set_yscale("log")
+    
+    # ax2.legend()
+    # ax2.grid()
+    # ax2.set_xlabel('time')
+    
+    
+    # ax1.set_ylabel('Y-axis')
+    
+    plt.savefig(file_name, dpi=150)
+    # plt.show()
+    plt.close()
+    
+    return 0
 
 try:
+    directory = "frames"
+    os.makedirs(directory, exist_ok=True)
+    
+    directory = "fit_land"
+    os.makedirs(directory, exist_ok=True)
+    
     directory = "pp_data"
     os.makedirs(directory, exist_ok=True)
 except:
     pass
 
+
+##### reading params #################################
 filename = 'params.csv'
 variables = read_custom_csv(filename)
+filename = 'pp_params.csv'
+pp_variables = read_custom_csv_pp(filename)
+frame_plot_switch = pp_variables['frame_plot_switch']
+##### reading params #################################
 
 ######################### Load Params ############################
 cellX = np.loadtxt('init/X_init.txt', delimiter=',')
@@ -361,12 +585,14 @@ A_min_types = np.zeros(variables['NTypes'])
 A_max_types = np.zeros(variables['NTypes'])
 
 alive_stat = np.zeros(1+variables['samplesPerWrite'], dtype=int)
-C_stat = np.zeros(1+variables['samplesPerWrite'], dtype=int)
+C_alive_stat = np.zeros(1+variables['samplesPerWrite'], dtype=int)
+C_apop_stat = np.zeros(1+variables['samplesPerWrite'], dtype=int)
 WT_alive_stat = np.zeros(1+variables['samplesPerWrite'], dtype=int)
 WT_cyc_stat = np.zeros(1+variables['samplesPerWrite'], dtype=int)
 WT_g1_cyc_stat = np.zeros(1+variables['samplesPerWrite'], dtype=int)
 WT_g1_arr_stat = np.zeros(1+variables['samplesPerWrite'], dtype=int)
 WT_g1_tot_stat = np.zeros(1+variables['samplesPerWrite'], dtype=int)
+WT_sg2m_stat =   np.zeros(1+variables['samplesPerWrite'], dtype=int)
 WT_g0_stat = np.zeros(1+variables['samplesPerWrite'], dtype=int)
 WT_diff_stat = np.zeros(1+variables['samplesPerWrite'], dtype=int)
 WT_apop_stat = np.zeros(1+variables['samplesPerWrite'], dtype=int)
@@ -398,21 +624,23 @@ for cellC in range(NCells):
     # WT_cyc_stat = np.zeros(1+variables['samplesPerWrite'])
     # WT_g1_cyc_stat = np.zeros(1+variables['samplesPerWrite'])
     # WT_g1_arr_stat = np.zeros(1+variables['samplesPerWrite'])
-    WT_g1_tot_stat = np.zeros(1+variables['samplesPerWrite'])
+    # WT_g1_tot_stat = np.zeros(1+variables['samplesPerWrite'])
     # WT_g0_stat = np.zeros(1+variables['samplesPerWrite'])
     # WT_diff_stat = np.zeros(1+variables['samplesPerWrite'])
     # WT_apop_stat = np.zeros(1+variables['samplesPerWrite'])
 
-C_stat[0] = np.sum(cellType)
-WT_apop_stat[0] = len(cellState[cellState==APOP_STATE])
-WT_alive_stat[0] = (NCells - C_stat[0])-WT_apop_stat[0]
-alive_stat[0] = C_stat[0] + WT_alive_stat[0]
-WT_diff_stat[0] = len(cellState[cellState==DIFF_STATE])
-WT_g0_stat[0] = len(cellState[cellState==G0_STATE])
+C_alive_stat[0] =   len(cellType[(cellType==CA_CELL_TYPE) & (cellState==CYCLING_STATE)])
+C_apop_stat[0] =    len(cellType[(cellType==CA_CELL_TYPE) & (cellState==APOP_STATE)])
+WT_apop_stat[0] =   len(cellType[(cellType==WT_CELL_TYPE) & (cellState==APOP_STATE)])
+WT_alive_stat[0] =  len(cellType[(cellType==WT_CELL_TYPE) & (cellState != APOP_STATE)])
+alive_stat[0] =     C_alive_stat[0] + WT_alive_stat[0]
+WT_diff_stat[0] =   len(cellState[cellState==DIFF_STATE])
+WT_g0_stat[0] =     len(cellState[cellState==G0_STATE])
 WT_g1_arr_stat[0] = len(cellState[cellState==G1_ARR_STATE])
-WT_cyc_stat[0] = len(cellState[cellState==CYCLING_STATE]) - C_stat[0]
+WT_cyc_stat[0] =    len(cellType[(cellType==WT_CELL_TYPE) & (cellState==CYCLING_STATE)])
 WT_g1_cyc_stat[0] = len(cellState[(cellType==WT_CELL_TYPE) & (cellState==CYCLING_STATE) & (cellPhi<=2.0*np.pi*variables['G1Border'])])
 WT_g1_tot_stat[0] = WT_g1_cyc_stat[0] + WT_g1_arr_stat[0]
+WT_sg2m_stat[0] = len(cellState[(cellType==WT_CELL_TYPE) & (cellState==CYCLING_STATE) & (cellPhi>2.0*np.pi*variables['G1Border'])])
 
 
 
@@ -426,8 +654,11 @@ WT_g1_tot_stat[0] = WT_g1_cyc_stat[0] + WT_g1_arr_stat[0]
 time = np.array([0])
 
 snapshotInd = 0
-# plotter(0.0, snapshotInd)
+if frame_plot_switch:
+    plotter(0.0, snapshotInd)
+    landscape_plotter(0.0, snapshotInd)
 snapshotInd += 1
+
 
 args = ['all']
 subprocess.run(['python3', 'dataUnzipper.py'] + args)
@@ -455,7 +686,8 @@ while(1):
             zeros_to_append = np.zeros(variables['samplesPerWrite'], dtype=int)
             
             alive_stat = np.append(alive_stat, zeros_to_append.copy())
-            C_stat =     np.append(C_stat, zeros_to_append.copy())
+            C_alive_stat =     np.append(C_alive_stat, zeros_to_append.copy())
+            C_apop_stat =     np.append(C_apop_stat, zeros_to_append.copy())
             WT_alive_stat = np.append(WT_alive_stat, zeros_to_append.copy())
             WT_cyc_stat = np.append(WT_cyc_stat, zeros_to_append.copy())
             WT_g1_cyc_stat = np.append(WT_g1_cyc_stat, zeros_to_append.copy())
@@ -464,6 +696,7 @@ while(1):
             WT_g0_stat = np.append(WT_g0_stat, zeros_to_append.copy())
             WT_diff_stat = np.append(WT_diff_stat, zeros_to_append.copy())
             WT_apop_stat = np.append(WT_apop_stat, zeros_to_append.copy())
+            WT_sg2m_stat = np.append(WT_sg2m_stat, zeros_to_append.copy())
         # try:
         #     cellX = np.loadtxt('data/X_'+str(ind)+'.txt', delimiter=',')
         #     cellY = np.loadtxt('data/Y_'+str(ind)+'.txt', delimiter=',')
@@ -498,21 +731,25 @@ while(1):
             # Cancer = np.append(Cancer, np.sum(cellType))
             # WT = np.append(WT, NCells - np.sum(cellType))
             
-            C_stat[snapshotInd] = np.sum(cellType)
-            WT_apop_stat[snapshotInd] = len(cellState[cellState==APOP_STATE])
-            WT_alive_stat[snapshotInd] = (NCells - C_stat[snapshotInd])-WT_apop_stat[snapshotInd]
-            alive_stat[snapshotInd] = C_stat[snapshotInd] + WT_alive_stat[snapshotInd]
-            WT_diff_stat[snapshotInd] = len(cellState[cellState==DIFF_STATE])
-            WT_g0_stat[snapshotInd] = len(cellState[cellState==G0_STATE])
+            C_alive_stat[snapshotInd] =   len(cellType[(cellType==CA_CELL_TYPE) & (cellState != APOP_STATE)])
+            C_apop_stat[snapshotInd] =    len(cellType[(cellType==CA_CELL_TYPE) & (cellState==APOP_STATE)])
+            WT_apop_stat[snapshotInd] =   len(cellType[(cellType==WT_CELL_TYPE) & (cellState==APOP_STATE)])
+            WT_alive_stat[snapshotInd] =  len(cellType[(cellType==WT_CELL_TYPE) & (cellState != APOP_STATE)])
+            alive_stat[snapshotInd] =     C_alive_stat[snapshotInd] + WT_alive_stat[snapshotInd]
+            WT_diff_stat[snapshotInd] =   len(cellState[cellState==DIFF_STATE])
+            WT_g0_stat[snapshotInd] =     len(cellState[cellState==G0_STATE])
             WT_g1_arr_stat[snapshotInd] = len(cellState[cellState==G1_ARR_STATE])
-            WT_cyc_stat[snapshotInd] = len(cellState[cellState==CYCLING_STATE]) - C_stat[snapshotInd]
+            WT_cyc_stat[snapshotInd] =    len(cellType[(cellType==WT_CELL_TYPE) & (cellState==CYCLING_STATE)])
             WT_g1_cyc_stat[snapshotInd] = len(cellState[(cellType==WT_CELL_TYPE) & (cellState==CYCLING_STATE) & (cellPhi<=2.0*np.pi*variables['G1Border'])])
             WT_g1_tot_stat[snapshotInd] = WT_g1_cyc_stat[snapshotInd] + WT_g1_arr_stat[snapshotInd]
+            WT_sg2m_stat[snapshotInd] =   len(cellState[(cellType==WT_CELL_TYPE) & (cellState==CYCLING_STATE) & (cellPhi>2.0*np.pi*variables['G1Border'])])
             
             time = np.append(time, t)
 
-
-            # plotter(t, snapshotInd)
+            if frame_plot_switch:
+                plotter(t, snapshotInd)
+                landscape_plotter(t, snapshotInd)
+                
             snapshotInd += 1
             # t += dt
             print(t)
@@ -524,7 +761,8 @@ while(1):
 
 np.savetxt("pp_data"+"/"+"time.txt", time, fmt='%.4f')
 np.savetxt("pp_data"+"/"+"alive_stat.txt", alive_stat, fmt='%d')
-np.savetxt("pp_data"+"/"+"C_stat.txt", C_stat, fmt='%d')
+np.savetxt("pp_data"+"/"+"C_alive_stat.txt", C_alive_stat, fmt='%d')
+np.savetxt("pp_data"+"/"+"C_apop_stat.txt", C_apop_stat, fmt='%d')
 np.savetxt("pp_data"+"/"+"WT_alive_stat.txt", WT_alive_stat, fmt='%d')
 np.savetxt("pp_data"+"/"+"WT_cyc_stat.txt", WT_cyc_stat, fmt='%d')
 np.savetxt("pp_data"+"/"+"WT_g1_cyc_stat.txt", WT_g1_cyc_stat, fmt='%d')
@@ -533,5 +771,6 @@ np.savetxt("pp_data"+"/"+"WT_g1_tot_stat.txt", WT_g1_tot_stat, fmt='%d')
 np.savetxt("pp_data"+"/"+"WT_g0_stat.txt", WT_g0_stat, fmt='%d')
 np.savetxt("pp_data"+"/"+"WT_diff_stat.txt", WT_diff_stat, fmt='%d')
 np.savetxt("pp_data"+"/"+"WT_apop_stat.txt", WT_apop_stat, fmt='%d')
+np.savetxt("pp_data"+"/"+"WT_sg2m_stat.txt", WT_sg2m_stat, fmt='%d')
 
 stats_plotter("statistics")

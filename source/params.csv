@@ -26,20 +26,20 @@ G1Border = 0.40
 
 ############### POTENTIAL LANDSCAPE ##############
 typeOmega = [0.36, 0.36]
-typeBarrierW = [0.3, 0.3]
+typeBarrierW = [0.05, 0.05]
 typeSigmaPhi = [0.05, 0.05]
 typeSigmaFit = [0.01, 0.01]
-barrierPeakCoef = 0.1
+barrierPeakCoef = 0.00012
 
 typeFit0 = [0.36, 0.41]
-Fit_Th_Wall = 0.35
-Fit_Th_G0 = 0.18
-Fit_Th_Diff = 0.15
-Fit_Th_Apop = 0.12
+Fit_Th_Wall = 0.33
+Fit_Th_G0 = 0.29
+Fit_Th_Diff = 0.28
+Fit_Th_Apop = 0.27
 ############### POTENTIAL LANDSCAPE ##############
 
 ############### TIMING & SAMPLING ##############
-maxTime = 30.1
+maxTime = 50.1
 dt = 0.001
 dt_sample = 0.5
 samplesPerWrite = 20
