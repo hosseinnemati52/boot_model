@@ -685,9 +685,9 @@ frame_plot_switch = pp_variables['frame_plot_switch']
 
 if pp_variables['ent_ext_switch'] and variables['dt_sample']>0.051:
     print('################################')
-    print('Error! dt_sample too large!')
+    print('Warning! dt_sample too large for ent, ext, distributions!')
     print('################################')
-    sys.exit()
+    #sys.exit()
 ##### reading params #################################
 
 

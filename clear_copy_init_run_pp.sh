@@ -22,7 +22,7 @@ python3 init_cell_number_maker.py
 #
 for i in $(seq $N0 $N); do
 	cd "run_$i"
-	./Organoid_init
+	./Organoid_init_specific
 	cd ..
 done
 #

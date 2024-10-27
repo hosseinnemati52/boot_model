@@ -172,6 +172,14 @@ void trim(std::string& str);
 
 void readConfigFile(const std::string& filename, Config& config);
 
+void initializer_specific(const int N_UpperLim, int* NCellsPtr, vector<int>& NCellsPerType,
+                 const vector<double> typeR0, const vector<double> typeR2PI, 
+                 vector<int>& cellType, vector<double>& cellX, vector<double>& cellY, 
+                 vector<double>& cellVx, vector<double>& cellVy, 
+                 vector<double>& cellPhi, vector<int>& cellState, vector<double>& cellTheta,
+                 vector<vector<double>>& cellFitness, const vector<double>& typeFit0, std::mt19937 &mt_rand,
+                 const double G1Border, const double Fit_Th_G0, const double Fit_Th_Apop);
+
 void initializer(const int N_UpperLim, int* NCellsPtr, vector<int>& NCellsPerType,
                  const vector<double> typeR0, const vector<double> typeR2PI, 
                  vector<int>& cellType, vector<double>& cellX, vector<double>& cellY, 
@@ -518,12 +526,20 @@ int main()
     ///////////////// INITIALIZATION ////////////////////
     int saved_bunch_index = 1;
     
-    initializer(N_UpperLim, &NCells, NCellsPerType,
+    // initializer(N_UpperLim, &NCells, NCellsPerType,
+    //              typeR0, typeR2PI, 
+    //              cellType, cellX, cellY, 
+    //              cellVx, cellVy, 
+    //              cellPhi, cellState, cellTheta,
+    //              cellFitness, typeFit0, mt_rand);
+
+    initializer_specific(N_UpperLim, &NCells, NCellsPerType,
                  typeR0, typeR2PI, 
                  cellType, cellX, cellY, 
                  cellVx, cellVy, 
                  cellPhi, cellState, cellTheta,
-                 cellFitness, typeFit0, mt_rand);
+                 cellFitness, typeFit0, mt_rand,
+                 G1Border, Fit_Th_G0, Fit_Th_Apop);
 
     R_Area_calc(N_UpperLim, NCells, NTypes,
                 typeR0, typeR2PI, 
@@ -1010,6 +1026,284 @@ void readConfigFile(const std::string& filename, Config& config) {
         
         }
     }
+}
+
+void initializer_specific(const int N_UpperLim, int* NCellsPtr, vector<int>& NCellsPerType,
+                 const vector<double> typeR0, const vector<double> typeR2PI, 
+                 vector<int>& cellType, vector<double>& cellX, vector<double>& cellY, 
+                 vector<double>& cellVx, vector<double>& cellVy, 
+                 vector<double>& cellPhi, vector<int>& cellState, vector<double>& cellTheta,
+                 vector<vector<double>>& cellFitness, const vector<double>& typeFit0, std::mt19937 &mt_rand,
+                 const double G1Border, const double Fit_Th_G0, const double Fit_Th_Apop)
+{
+    // NCellsPerType[0] = 500;
+    // NCellsPerType[1] = 50;
+
+    vector<int> NCellsPerType_read;
+
+    readIntVectorFromFile("Init_numbers.csv", NCellsPerType_read);
+    int NTypes = NCellsPerType_read.size();
+
+    for (int i = 0; i < NTypes; i++)
+    {
+        NCellsPerType[i] = NCellsPerType_read[i];
+    }
+
+    int NCells = NCellsPerType[0] + NCellsPerType[1];
+    
+    *NCellsPtr = NCells;
+
+    // std::srand(static_cast<unsigned int>(std::time(0)));
+    
+    unsigned long random_int;
+    double random_float;
+    unsigned long MT_MAX = mt_rand.max();
+    unsigned long MT_MIN = mt_rand.min();
+
+    double cellArea_val, cellR_val;
+
+    vector<double> A_tot_sq(NTypes);
+    vector<double> A_tot(NTypes);
+    for (int i = 0; i < NTypes; i++)
+    {
+        A_tot_sq[i] = 0.0;
+        A_tot[i] = 0.0;
+    }
+    
+    vector<double> cellR(NCells);
+
+
+    
+
+    int typeInd = 0;
+    double A_min = PI * typeR0[typeInd] * typeR0[typeInd];
+    double A_max = PI * typeR2PI[typeInd] * typeR2PI[typeInd];
+
+    // specific phi and F for initialization
+    random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
+    double SG2M_frac = 0.2 + 0.05 * (2*random_float-1);
+
+    random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
+    double G0Diff_frac = 0.2 + 0.05 * (2*random_float-1);
+
+    double G1_frac = 1.0 - SG2M_frac - G0Diff_frac;
+
+    int N_WT_SG2M = (int)(SG2M_frac * NCellsPerType[0]);
+    int N_WT_G0Diff = (int)(G0Diff_frac * NCellsPerType[0]);
+    int N_WT_G1 = NCellsPerType[0] - N_WT_SG2M - N_WT_G0Diff;
+    // specific phi and F for initialization
+
+    int cellC = 0;
+
+    while (cellC < NCellsPerType[0])
+    {   
+        cellType[cellC] = typeInd;
+
+        if (cellC < N_WT_G1) // The ones in G1
+        {
+            // random_float = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+            random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
+            cellPhi[cellC] = random_float * (G1Border * 2*PI);
+
+            cellState[cellC] = CYCLING_STATE; 
+
+            random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
+            cellFitness[cellC][0] = typeFit0[typeInd] + (2*random_float-1) * (typeFit0[typeInd]-Fit_Th_G0);
+            cellFitness[cellC][1] = 0.0;
+
+        } else if (cellC < N_WT_G1+N_WT_SG2M) // The ones in SG2M
+        {
+            // random_float = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+            random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
+            cellPhi[cellC] = G1Border * 2*PI + random_float * (2*PI - G1Border * 2*PI);
+
+            cellState[cellC] = CYCLING_STATE; 
+
+            random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
+            cellFitness[cellC][0] = typeFit0[typeInd] + (2*random_float-1) * (typeFit0[typeInd]-Fit_Th_G0);
+            cellFitness[cellC][1] = 0.0;
+
+        } else // The ones in G0/Diff
+        {
+            // random_float = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+            random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
+            cellPhi[cellC] = random_float * (G1Border * 2*PI);
+
+            cellState[cellC] = G0_STATE;     
+
+            random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
+            cellFitness[cellC][0] = Fit_Th_Apop + random_float * (Fit_Th_G0 - Fit_Th_Apop);
+            cellFitness[cellC][1] = 0.0;
+        }
+
+        
+
+        // cellArea[cellC] = A_min + (A_max - A_min) * 0.5 * (1 - cos(cellPhi[cellC]/2.0)); // cosine area independency to phi
+        cellArea_val = A_min + (A_max - A_min) * cellPhi[cellC] / (2 * PI); // linear area independency to phi
+        cellR_val = pow(cellArea_val / PI, 0.5);
+        cellR[cellC] = cellR_val;
+        A_tot_sq[typeInd] += 4 * cellR_val * cellR_val;
+        A_tot[typeInd] += PI * cellR_val * cellR_val;
+
+        // random_float = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+        random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
+        cellTheta[cellC] = random_float * (2*PI);
+
+        cellVx[cellC] = 0.0;
+        cellVy[cellC] = 0.0;
+
+        
+
+        cellC++;
+    }
+
+    typeInd = 1;
+    A_min = PI * typeR0[typeInd] * typeR0[typeInd];
+    A_max = PI * typeR2PI[typeInd] * typeR2PI[typeInd];
+    while (cellC < NCellsPerType[0] + NCellsPerType[1])
+    {   
+        cellType[cellC] = typeInd;
+
+        // random_float = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+        random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
+        cellPhi[cellC] = random_float * (2*PI);
+
+        cellState[cellC] = CYCLING_STATE; // all the cells start from cycling state
+
+        // cellArea[cellC] = A_min + (A_max - A_min) * 0.5 * (1 - cos(cellPhi[cellC]/2.0));  // cosine area independency to phi
+        cellArea_val = A_min + (A_max - A_min) * cellPhi[cellC] / (2 * PI); // linear area independency to phi
+        cellR_val = pow(cellArea_val / PI, 0.5);
+        cellR[cellC] = cellR_val;
+        A_tot_sq[typeInd] += 4 * cellR_val * cellR_val;
+        A_tot[typeInd] += PI * cellR_val * cellR_val;
+
+        // random_float = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+        random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
+        cellTheta[cellC] = random_float * (2*PI);
+
+        cellVx[cellC] = 0.0;
+        cellVy[cellC] = 0.0;
+
+        random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
+        cellFitness[cellC][0] = typeFit0[typeInd] + (2*random_float-1) * 0.5 * (typeFit0[typeInd]-Fit_Th_Apop);
+        cellFitness[cellC][1] = 0.0;
+
+        cellC++;
+    }
+
+    while (cellC < N_UpperLim)
+    {
+        cellPhi[cellC] = 0;
+        cellState[cellC] = 0;
+
+        cellType[cellC] = NULL_CELL_TYPE;
+
+        // cellArea[cellC] = 0;
+        // cellR[cellC] = 0;
+        cellTheta[cellC] = 0;
+
+        cellX[cellC] = 0;
+        cellY[cellC] = 0;
+
+        cellVx[cellC] = 0;
+        cellVy[cellC] = 0;
+
+        cellFitness[cellC][0] = 0;
+        cellFitness[cellC][1] = 0;
+
+        cellC++;
+    }
+
+    ////// initialization of X and Y //////
+    // double Lx , Ly;
+    double increase_coef = 1.0;
+    double R_tot;
+    // R_tot = pow( (A_tot_sq[0] + A_tot_sq[1]) / PI, 0.5);
+    R_tot = pow( increase_coef*(A_tot[0] + A_tot[1]) / PI, 0.5);
+    // Lx = 2.0 * R_tot;
+    // Ly = 2.0 * R_tot;
+
+    // finding h (border of WT and Cancer cells)
+    double h = R_tot;
+    double dh = 0.001 * R_tot;
+    double a = 0.0;
+    
+    // while (a < A_tot_sq[1])
+    while (a < A_tot[1]* increase_coef)
+    {
+        a = R_tot * R_tot * acos(h/R_tot) - h * pow(R_tot * R_tot - h * h , 0.5);
+        h = h - dh;
+    }
+    // finding h (border of WT and Cancer cells)
+
+    double overlap;
+
+    cellC = 0;
+    while (cellC < NCellsPerType[0] + NCellsPerType[1])
+    {   
+        typeInd = cellType[cellC];
+        
+        int repeat_cond, out_cond, not_part_cond, too_close_cond;
+        double x, y;
+
+        do
+        {
+            // random_float = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+            random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
+            x = -R_tot + (2 * R_tot) * random_float;
+
+            // random_float = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+            random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
+            y = -R_tot + (2 * R_tot) * random_float;
+
+            out_cond =  ( (x*x + y*y) > (R_tot*R_tot) );
+            if (typeInd == 0)
+            {
+                not_part_cond = (y > h);
+            }
+            else if (typeInd == 1)
+            {
+                not_part_cond = (y <= h);
+            }
+
+            too_close_cond = 0;
+            for (int j = 0; j < cellC; j++)
+            {
+                if ((x-cellX[j])*(x-cellX[j]) + (y-cellY[j])*(y-cellY[j]) < pow(0.50 * (cellR[cellC]+cellR[j]), 2)  )
+                {
+                    too_close_cond = 1;
+                    break;
+                }
+                
+            }
+            
+            repeat_cond = out_cond || not_part_cond || too_close_cond;
+
+        } while (repeat_cond);
+        
+        
+        cellX[cellC] = x;
+        cellY[cellC] = y;
+
+        cellC++;
+    }
+    ////// initialization of X and Y //////
+
+    //// This block is for windows:
+    // mkdir(ppDataFolderName.c_str()); //making data folder
+    //// This block is for Linux:
+    // mkdir("init_of_init", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); //making backup_resume folder
+
+    writeIntVectorToFile(cellType, NCells, "init_of_init/Type_init.txt");
+    writeDoubleVectorToFile(cellX, NCells, "init_of_init/X_init.txt");
+    writeDoubleVectorToFile(cellY, NCells, "init_of_init/Y_init.txt");
+    writeDoubleVectorToFile(cellVx, NCells, "init_of_init/Vx_init.txt");
+    writeDoubleVectorToFile(cellVy, NCells, "init_of_init/Vy_init.txt");
+    writeDoubleVectorToFile(cellPhi, NCells, "init_of_init/Phi_init.txt");
+    writeIntVectorToFile(cellState, NCells, "init_of_init/State_init.txt");
+    // writeDoubleVectorToFile(cellR, NCells, "init/R_init.txt");
+    writeDoubleVectorToFile(cellTheta, NCells, "init_of_init/Theta_init.txt");
+    writeDoubleMatrixToFile(cellFitness, NCells, 2,  "init_of_init/Fit_init.txt");
 }
 
 void initializer(const int N_UpperLim, int* NCellsPtr, vector<int>& NCellsPerType,
