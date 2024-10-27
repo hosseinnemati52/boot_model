@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Created on Sun Oct 27 09:11:46 2024
+
+@author: hossein
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
 Created on Wed Oct 16 17:09:51 2024
 
 @author: hossein
@@ -29,6 +37,7 @@ import matplotlib.colors as mcolors
 import re
 import subprocess
 import os
+import sys
 
 CYCLING_STATE =   (1)
 G1_ARR_STATE =    (-1)
@@ -551,6 +560,102 @@ def landscape_plotter(t, snapshotInd):
     
     return 0
 
+def hist_plotter():
+    
+    plt.figure()
+    X, Y = np.meshgrid(time, fit_hist_bins[0:-1])
+    plt.pcolormesh(X, Y, WT_fit_hist_data, shading='auto', cmap='viridis')
+    plt.colorbar(label="Intensity")
+    plt.xlabel("time")
+    plt.ylabel("fitness")
+    title = 'distribution of fitness (WT)'
+    plt.title(title)
+    file_name = 'fit_hist_WT.PNG'
+    plt.savefig(file_name, dpi=150)
+    plt.close()
+    
+    plt.figure()
+    X, Y = np.meshgrid(time, phi_hist_bins[0:-1])
+    plt.pcolormesh(X, Y, WT_phi_hist_data, shading='auto', cmap='viridis')
+    plt.colorbar(label="Intensity")
+    plt.xlabel("time")
+    plt.ylabel("Phi")
+    title = 'distribution of phi (WT)'
+    plt.title(title)
+    
+    file_name = 'phi_hist_WT.PNG'
+    plt.savefig(file_name, dpi=150)
+    plt.close()
+    
+    # title = 'distribution of fitness (C)'
+    # file_name = 'fit_hist_C.PNG'
+    # plt.savefig(file_name, dpi=150)
+    # plt.close()
+    
+    # title = 'distribution of phi (WT)'
+    # file_name = 'phi_hist_WT.PNG'
+    # plt.savefig(file_name, dpi=150)
+    # plt.close()
+    
+    # title = 'distribution of phi (C)'
+    # file_name = 'phi_hist_C.PNG'
+    # plt.savefig(file_name, dpi=150)
+    # plt.close()
+    
+    return
+
+def ent_ext_fitness_dist_saver():
+    
+    for t_window_C in range(len(time_window_list)):
+        np.savetxt("pp_data"+"/"+"enter_fit_data_"+str(int(t_window_C))+".txt", enter_fit_data[t_window_C], fmt='%1.4f')
+        np.savetxt("pp_data"+"/"+"exit_fit_data_"+str(int(t_window_C))+".txt", exit_fit_data[t_window_C], fmt='%1.4f')
+        
+    
+    
+    
+    for t_window_C in range(len(time_window_list)):
+        hist_plot, bin_edges = np.histogram(enter_fit_data[t_window_C], bins = fit_hist_bins, density=True)
+        np.savetxt("pp_data"+"/"+"enter_fit_hist_plot"+str(int(t_window_C))+".txt", hist_plot, fmt='%1.4f')
+        
+    
+        plt.figure()
+        # Calculate the bin centers from bin edges
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+       
+        # Plotting the histogram
+        plt.bar(bin_centers, hist_plot, width=np.diff(bin_edges), align='center', alpha=0.7, color='blue')
+        plt.xlabel("fitness")
+        plt.ylabel("PDF")
+        title = "entering fitness dist " + "("+str(t_window_C*0.25)+"* T_max)"
+        plt.title(title)
+        fileName = "enter_fit_"+str(int(t_window_C))
+        plt.savefig("extra_plot/"+fileName, dpi=200)
+        plt.close()
+        
+    for t_window_C in range(len(time_window_list)):
+        hist_plot, bin_edges = np.histogram(exit_fit_data[t_window_C], bins = fit_hist_bins, density=True)
+        np.savetxt("pp_data"+"/"+"exit_fit_hist_plot"+str(int(t_window_C))+".txt", hist_plot, fmt='%1.4f')
+        
+    
+        plt.figure()
+        # Calculate the bin centers from bin edges
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+       
+        # Plotting the histogram
+        plt.bar(bin_centers, hist_plot, width=np.diff(bin_edges), align='center', alpha=0.7, color='blue')
+        plt.xlabel("fitness")
+        plt.ylabel("PDF")
+        title = "exitinging fitness dist " + "("+str(t_window_C*0.25)+"* T_max)"
+        plt.title(title)
+        fileName = "exit_fit_"+str(int(t_window_C))
+        plt.savefig("extra_plot/"+fileName, dpi=200)
+        plt.close()
+        
+        
+        
+    
+    return
+
 try:
     directory = "frames"
     os.makedirs(directory, exist_ok=True)
@@ -560,6 +665,10 @@ try:
     
     directory = "pp_data"
     os.makedirs(directory, exist_ok=True)
+    
+    directory = "extra_plot"
+    os.makedirs(directory, exist_ok=True)
+    
 except:
     pass
 
@@ -570,7 +679,43 @@ variables = read_custom_csv(filename)
 filename = 'pp_params.csv'
 pp_variables = read_custom_csv_pp(filename)
 frame_plot_switch = pp_variables['frame_plot_switch']
+
+# if variables['dt_sample']>0.051:
+#     print('################################')
+#     print('Error! dt_sample too large!')
+#     print('################################')
+#     sys.exit()
 ##### reading params #################################
+
+
+####### full temporal hists #############
+n_bins_fit = 30
+fit_hist_bins = np.linspace(variables['Fit_Th_Apop'], 1.5 * variables['typeFit0'][1], n_bins_fit+1)
+
+n_bins_phi = 50
+phi_hist_bins = np.linspace(0, 2*np.pi , n_bins_phi+1)
+
+np.savetxt("pp_data"+"/"+"fit_hist_bins.txt", fit_hist_bins, fmt='%1.4f')
+np.savetxt("pp_data"+"/"+"phi_hist_bins.txt", phi_hist_bins, fmt='%1.4f')
+####### full temporal hists #############
+
+####### flux hists #############
+Dt_dist = 10
+time_window_list = []
+time_window_list.append([0, 0+Dt_dist])
+time_window_list.append([0.25*variables['maxTime']-Dt_dist/2., 0.25*variables['maxTime']+Dt_dist/2.])
+time_window_list.append([0.50*variables['maxTime']-Dt_dist/2., 0.50*variables['maxTime']+Dt_dist/2.])
+time_window_list.append([0.75*variables['maxTime']-Dt_dist/2., 0.75*variables['maxTime']+Dt_dist/2.])
+time_window_list.append([variables['maxTime']-Dt_dist, variables['maxTime']])
+
+phiSections = np.array([0.02, 0.98]) * 2 * np.pi
+
+enter_fit_data = len(time_window_list) * [[]]
+exit_fit_data = len(time_window_list) * [[]]
+
+####### flux hists #############
+
+
 
 ######################### Load Params ############################
 cellX = np.loadtxt('init/X_init.txt', delimiter=',')
@@ -597,6 +742,10 @@ WT_g0_stat = np.zeros(1+variables['samplesPerWrite'], dtype=int)
 WT_diff_stat = np.zeros(1+variables['samplesPerWrite'], dtype=int)
 WT_apop_stat = np.zeros(1+variables['samplesPerWrite'], dtype=int)
 
+WT_fit_hist_data = np.zeros((n_bins_fit, 1+variables['samplesPerWrite']), dtype=float)
+CA_fit_hist_data = np.zeros((n_bins_fit, 1+variables['samplesPerWrite']), dtype=float)
+WT_phi_hist_data = np.zeros((n_bins_phi, 1+variables['samplesPerWrite']), dtype=float)
+CA_phi_hist_data = np.zeros((n_bins_phi, 1+variables['samplesPerWrite']), dtype=float)
 
 
 for typeC in range(variables['NTypes']):
@@ -642,6 +791,11 @@ WT_g1_cyc_stat[0] = len(cellState[(cellType==WT_CELL_TYPE) & (cellState==CYCLING
 WT_g1_tot_stat[0] = WT_g1_cyc_stat[0] + WT_g1_arr_stat[0]
 WT_sg2m_stat[0] = len(cellState[(cellType==WT_CELL_TYPE) & (cellState==CYCLING_STATE) & (cellPhi>2.0*np.pi*variables['G1Border'])])
 
+WT_fit_hist_data[:,0] = np.histogram(cellFitness[:,0][(cellType==WT_CELL_TYPE) & (cellState != APOP_STATE)], bins = fit_hist_bins, density=True)[0]
+CA_fit_hist_data[:,0] = np.histogram(cellFitness[:,0][(cellType==CA_CELL_TYPE) & (cellState != APOP_STATE)], bins = fit_hist_bins, density=True)[0]
+WT_phi_hist_data[:,0] = np.histogram(cellPhi[(cellType==WT_CELL_TYPE) & (cellState != APOP_STATE)], bins = phi_hist_bins, density=True)[0]
+CA_phi_hist_data[:,0] = np.histogram(cellPhi[(cellType==CA_CELL_TYPE) & (cellState != APOP_STATE)], bins = phi_hist_bins, density=True)[0]
+
 
 
 
@@ -684,6 +838,8 @@ while(1):
         
         if bunchInd > 1:
             zeros_to_append = np.zeros(variables['samplesPerWrite'], dtype=int)
+            fit_hist_zeros_to_append = np.zeros((n_bins_fit, variables['samplesPerWrite']))
+            phi_hist_zeros_to_append = np.zeros((n_bins_phi, variables['samplesPerWrite']))
             
             alive_stat = np.append(alive_stat, zeros_to_append.copy())
             C_alive_stat =     np.append(C_alive_stat, zeros_to_append.copy())
@@ -697,6 +853,12 @@ while(1):
             WT_diff_stat = np.append(WT_diff_stat, zeros_to_append.copy())
             WT_apop_stat = np.append(WT_apop_stat, zeros_to_append.copy())
             WT_sg2m_stat = np.append(WT_sg2m_stat, zeros_to_append.copy())
+            
+            WT_fit_hist_data = np.append(WT_fit_hist_data, fit_hist_zeros_to_append.copy(), axis=1)
+            CA_fit_hist_data = np.append(CA_fit_hist_data, fit_hist_zeros_to_append.copy(), axis=1)
+            WT_phi_hist_data = np.append(WT_phi_hist_data, phi_hist_zeros_to_append.copy(), axis=1)
+            CA_phi_hist_data = np.append(CA_phi_hist_data, phi_hist_zeros_to_append.copy(), axis=1)
+            
         # try:
         #     cellX = np.loadtxt('data/X_'+str(ind)+'.txt', delimiter=',')
         #     cellY = np.loadtxt('data/Y_'+str(ind)+'.txt', delimiter=',')
@@ -712,9 +874,34 @@ while(1):
             NCells = len(cellType)
             cellX = X_bunch[:NCells, sampleC]
             cellY = Y_bunch[:NCells, sampleC]
-            cellPhi = Phi_bunch[:NCells, sampleC]
+            
+            
+            for t_window_C in range(len(time_window_list)):
+                t_min_window = time_window_list[t_window_C][0]
+                t_max_window = time_window_list[t_window_C][1]
+                if t>t_min_window and t<t_max_window:
+                    
+                    NCells_old = len(cellPhi)
+                    cellFitness_real_old = cellFitness[:,0]
+                    condition_enter = \
+                    (Phi_bunch[:NCells_old, sampleC]>phiSections[0]) & \
+                    (cellPhi < phiSections[0]) & (cellState != APOP_STATE)
+                    
+                    enter_fit_data[t_window_C]= enter_fit_data[t_window_C]+list(cellFitness_real_old[condition_enter])
+                    
+                    condition_exit = \
+                    (Phi_bunch[:NCells_old, sampleC]>phiSections[1]) & \
+                    (cellPhi < phiSections[1]) & (cellState != APOP_STATE)
+                    
+                    exit_fit_data[t_window_C]= exit_fit_data[t_window_C]+list(cellFitness_real_old[condition_exit])
+                    
+                else:
+                    pass
+                
             cellState = state_bunch[:NCells, sampleC]
             cellFitness = fitness_bunch[:NCells, 2*sampleC:2*sampleC+2]
+            cellPhi = Phi_bunch[:NCells, sampleC]
+            
             
             cellR = 0.0 * cellPhi
             for cellC in range(NCells):
@@ -743,6 +930,16 @@ while(1):
             WT_g1_cyc_stat[snapshotInd] = len(cellState[(cellType==WT_CELL_TYPE) & (cellState==CYCLING_STATE) & (cellPhi<=2.0*np.pi*variables['G1Border'])])
             WT_g1_tot_stat[snapshotInd] = WT_g1_cyc_stat[snapshotInd] + WT_g1_arr_stat[snapshotInd]
             WT_sg2m_stat[snapshotInd] =   len(cellState[(cellType==WT_CELL_TYPE) & (cellState==CYCLING_STATE) & (cellPhi>2.0*np.pi*variables['G1Border'])])
+            
+                
+            WT_fit_hist_data[:,snapshotInd] = np.histogram(cellFitness[:,0][(cellType==WT_CELL_TYPE) & (cellState != APOP_STATE)], bins = fit_hist_bins, density=True)[0]
+            CA_fit_hist_data[:,snapshotInd] = np.histogram(cellFitness[:,0][(cellType==CA_CELL_TYPE) & (cellState != APOP_STATE)], bins = fit_hist_bins, density=True)[0]
+            WT_phi_hist_data[:,snapshotInd] = np.histogram(cellPhi[(cellType==WT_CELL_TYPE) & (cellState != APOP_STATE)], bins = phi_hist_bins, density=True)[0]
+            CA_phi_hist_data[:,snapshotInd] = np.histogram(cellPhi[(cellType==CA_CELL_TYPE) & (cellState != APOP_STATE)], bins = phi_hist_bins, density=True)[0]
+            
+            
+            
+            
             
             time = np.append(time, t)
 
@@ -773,4 +970,13 @@ np.savetxt("pp_data"+"/"+"WT_diff_stat.txt", WT_diff_stat, fmt='%d')
 np.savetxt("pp_data"+"/"+"WT_apop_stat.txt", WT_apop_stat, fmt='%d')
 np.savetxt("pp_data"+"/"+"WT_sg2m_stat.txt", WT_sg2m_stat, fmt='%d')
 
+np.savetxt("pp_data"+"/"+"WT_fit_hist_data.txt", WT_fit_hist_data, fmt='%1.4f')
+np.savetxt("pp_data"+"/"+"CA_fit_hist_data.txt", CA_fit_hist_data, fmt='%1.4f')
+np.savetxt("pp_data"+"/"+"WT_phi_hist_data.txt", WT_phi_hist_data, fmt='%1.4f')
+np.savetxt("pp_data"+"/"+"CA_phi_hist_data.txt", CA_phi_hist_data, fmt='%1.4f')
+
+ent_ext_fitness_dist_saver()
+
 stats_plotter("statistics")
+
+hist_plotter()
