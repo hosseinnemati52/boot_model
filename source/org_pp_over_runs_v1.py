@@ -629,8 +629,8 @@ def distributions_plotter():
         WT_enter_fit_mean.append( np.mean(WT_enter_fit_all_runs[time_Win_C], axis=0) )
         WT_exit_fit_mean.append( np.mean(WT_exit_fit_all_runs[time_Win_C], axis=0) )
         
-        WT_enter_fit_err.append( np.std(WT_enter_fit_all_runs[time_Win_C], axis=0)/np.sqrt(N_runs-1) )
-        WT_exit_fit_err.append( np.std(WT_exit_fit_all_runs[time_Win_C], axis=0)/np.sqrt(N_runs-1) )
+        WT_enter_fit_err.append( np.std(WT_enter_fit_all_runs[time_Win_C], axis=0) )
+        WT_exit_fit_err.append( np.std(WT_exit_fit_all_runs[time_Win_C], axis=0) )
     
     for time_Win_C in range(N_time_windows):
         
@@ -641,7 +641,7 @@ def distributions_plotter():
        
         # Plotting the histogram
         plt.bar(bin_centers, WT_enter_fit_mean[time_Win_C], width=np.diff(bin_edges), align='center', alpha=0.7, color='blue')
-        plt.errorbar(bin_centers, WT_enter_fit_mean[time_Win_C], yerr=WT_enter_fit_err[time_Win_C], fmt='o', color='black', capsize=5)
+        plt.errorbar(bin_centers, WT_enter_fit_mean[time_Win_C], yerr=WT_enter_fit_err[time_Win_C], fmt='o', color='black', capsize=5, label="Std Dev")
         plt.xlabel("fitness")
         plt.ylabel("PDF")
         title = "AVG entering fitness dist " + "("+str(time_Win_C*0.25)+"* T_max)"
@@ -659,7 +659,7 @@ def distributions_plotter():
        
         # Plotting the histogram
         plt.bar(bin_centers, WT_exit_fit_mean[time_Win_C], width=np.diff(bin_edges), align='center', alpha=0.7, color='red')
-        plt.errorbar(bin_centers, WT_exit_fit_mean[time_Win_C], yerr=WT_exit_fit_err[time_Win_C], fmt='o', color='black', capsize=5)
+        plt.errorbar(bin_centers, WT_exit_fit_mean[time_Win_C], yerr=WT_exit_fit_err[time_Win_C], fmt='o', color='black', capsize=5, label="Std Dev")
         plt.xlabel("fitness")
         plt.ylabel("PDF")
         title = "AVG exiting fitness dist " + "("+str(time_Win_C*0.25)+"* T_max)"
@@ -670,7 +670,7 @@ def distributions_plotter():
     
     return
 
-N_runs = 20
+N_runs = 10
 time = np.loadtxt("run_1/pp_data/time.txt", delimiter=',', dtype=float)
 N_samples = len(time)
 

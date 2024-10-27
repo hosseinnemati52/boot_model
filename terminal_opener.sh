@@ -7,11 +7,11 @@ run_file_in_terminal() {
   title=$3
   
   # Open a new terminal window in the specified subfolder and run the file with custom title
-  gnome-terminal --working-directory="$PWD/$subfolder" --title="$title" -- sh -c "./$file; exec bash"
+  gnome-terminal --working-directory="$PWD/$subfolder" --title="$title" -- sh -c "./$file; exit"
 }
 
 # Loop to run the script in 20 different folders
-for i in {1..5}
+for i in {1..20}
 do
   folder="run_$i"
   title="Terminal $i"

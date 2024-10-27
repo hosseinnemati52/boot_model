@@ -231,9 +231,12 @@ def read_custom_csv_pp(filename):
     # Extract variables from the dictionary
     frame_plot_switch = variables.get('frame_plot_switch', None)
     
+    ent_ext_switch = variables.get('ent_ext_switch', None)
+    
     
     return {
-        'frame_plot_switch': frame_plot_switch
+        'frame_plot_switch': frame_plot_switch,
+        'ent_ext_switch' : ent_ext_switch
             }
 
 def stats_plotter(fileName):
@@ -642,7 +645,7 @@ def ent_ext_fitness_dist_saver():
         bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
        
         # Plotting the histogram
-        plt.bar(bin_centers, hist_plot, width=np.diff(bin_edges), align='center', alpha=0.7, color='blue')
+        plt.bar(bin_centers, hist_plot, width=np.diff(bin_edges), align='center', alpha=0.7, color='red')
         plt.xlabel("fitness")
         plt.ylabel("PDF")
         title = "exitinging fitness dist " + "("+str(t_window_C*0.25)+"* T_max)"
@@ -680,11 +683,11 @@ filename = 'pp_params.csv'
 pp_variables = read_custom_csv_pp(filename)
 frame_plot_switch = pp_variables['frame_plot_switch']
 
-# if variables['dt_sample']>0.051:
-#     print('################################')
-#     print('Error! dt_sample too large!')
-#     print('################################')
-#     sys.exit()
+if pp_variables['ent_ext_switch'] and variables['dt_sample']>0.051:
+    print('################################')
+    print('Error! dt_sample too large!')
+    print('################################')
+    sys.exit()
 ##### reading params #################################
 
 
@@ -710,8 +713,11 @@ time_window_list.append([variables['maxTime']-Dt_dist, variables['maxTime']])
 
 phiSections = np.array([0.02, 0.98]) * 2 * np.pi
 
-enter_fit_data = len(time_window_list) * [[]]
-exit_fit_data = len(time_window_list) * [[]]
+# enter_fit_data = len(time_window_list) * [[]]
+# exit_fit_data = len(time_window_list) * [[]]
+
+enter_fit_data = [[] for _ in range(len(time_window_list))]
+exit_fit_data = [[] for _ in range(len(time_window_list))]
 
 ####### flux hists #############
 
@@ -970,12 +976,14 @@ np.savetxt("pp_data"+"/"+"WT_diff_stat.txt", WT_diff_stat, fmt='%d')
 np.savetxt("pp_data"+"/"+"WT_apop_stat.txt", WT_apop_stat, fmt='%d')
 np.savetxt("pp_data"+"/"+"WT_sg2m_stat.txt", WT_sg2m_stat, fmt='%d')
 
-np.savetxt("pp_data"+"/"+"WT_fit_hist_data.txt", WT_fit_hist_data, fmt='%1.4f')
-np.savetxt("pp_data"+"/"+"CA_fit_hist_data.txt", CA_fit_hist_data, fmt='%1.4f')
-np.savetxt("pp_data"+"/"+"WT_phi_hist_data.txt", WT_phi_hist_data, fmt='%1.4f')
-np.savetxt("pp_data"+"/"+"CA_phi_hist_data.txt", CA_phi_hist_data, fmt='%1.4f')
 
-ent_ext_fitness_dist_saver()
+if pp_variables['ent_ext_switch']:
+    np.savetxt("pp_data"+"/"+"WT_fit_hist_data.txt", WT_fit_hist_data, fmt='%1.4f')
+    np.savetxt("pp_data"+"/"+"CA_fit_hist_data.txt", CA_fit_hist_data, fmt='%1.4f')
+    np.savetxt("pp_data"+"/"+"WT_phi_hist_data.txt", WT_phi_hist_data, fmt='%1.4f')
+    np.savetxt("pp_data"+"/"+"CA_phi_hist_data.txt", CA_phi_hist_data, fmt='%1.4f')
+    
+    ent_ext_fitness_dist_saver()
 
 stats_plotter("statistics")
 
