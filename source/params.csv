@@ -7,7 +7,7 @@ typeTypeEpsilon = [[0.00, 0.00];[0.00, 0.00]]
 ############### GENERAL ##############
 
 ############### FORCE AND FRICTION ##############
-typeGamma = [6.0, 6.0]
+typeGamma = [5.0, 5.0]
 typeTypeGammaCC = [[0.01, 0.01];[0.01, 0.01]]
 typeTypeF_rep_max = [[800., 800.];[800., 800.]]
 typeTypeF_abs_max = [[20.0, 10.0];[10.0, 20.0]]
@@ -28,21 +28,21 @@ G1Border = 0.40
 typeOmega = [0.36, 0.36]
 typeBarrierW = [0.05, 0.05]
 typeSigmaPhi = [0.05, 0.05]
-typeSigmaFit = [0.01, 0.01]
-barrierPeakCoef = 0.00012
+typeSigmaFit = [0.02, 0.02]
+barrierPeakCoef = 0.00015
 
 typeFit0 = [0.36, 0.41]
 Fit_Th_Wall = 0.33
-Fit_Th_G0 = 0.29
-Fit_Th_Diff = 0.28
-Fit_Th_Apop = 0.27
+Fit_Th_G0 = 0.329
+Fit_Th_Diff = 0.2
+Fit_Th_Apop = 0.2
 ############### POTENTIAL LANDSCAPE ##############
 
 ############### TIMING & SAMPLING ##############
-maxTime = 50.1
+maxTime = 200.1
 dt = 0.001
-dt_sample = 0.5
-samplesPerWrite = 20
+dt_sample = 0.05
+samplesPerWrite = 1000
 writePerZip = 10
 printingTimeInterval = 1.0
 ############### TIMING & SAMPLING ##############

@@ -615,7 +615,7 @@ def ent_ext_fitness_dist_saver():
     
     for t_window_C in range(len(time_window_list)):
         hist_plot, bin_edges = np.histogram(enter_fit_data[t_window_C], bins = fit_hist_bins, density=True)
-        np.savetxt("pp_data"+"/"+"enter_fit_hist_plot"+str(int(t_window_C))+".txt", hist_plot, fmt='%1.4f')
+        np.savetxt("pp_data"+"/"+"enter_fit_hist_plot_"+str(int(t_window_C))+".txt", hist_plot, fmt='%1.4f')
         
     
         plt.figure()
@@ -634,7 +634,7 @@ def ent_ext_fitness_dist_saver():
         
     for t_window_C in range(len(time_window_list)):
         hist_plot, bin_edges = np.histogram(exit_fit_data[t_window_C], bins = fit_hist_bins, density=True)
-        np.savetxt("pp_data"+"/"+"exit_fit_hist_plot"+str(int(t_window_C))+".txt", hist_plot, fmt='%1.4f')
+        np.savetxt("pp_data"+"/"+"exit_fit_hist_plot_"+str(int(t_window_C))+".txt", hist_plot, fmt='%1.4f')
         
     
         plt.figure()
