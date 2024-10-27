@@ -20,7 +20,7 @@ import subprocess
 import os
 
 
-N_runs = 5
+N_runs = 20
 WT_init_frac_interval = np.array([1.0, 1.0])
 
 eps = 0.0001
