@@ -629,8 +629,8 @@ def distributions_plotter():
         WT_enter_fit_mean.append( np.mean(WT_enter_fit_all_runs[time_Win_C], axis=0) )
         WT_exit_fit_mean.append( np.mean(WT_exit_fit_all_runs[time_Win_C], axis=0) )
         
-        WT_enter_fit_err.append( np.std(WT_enter_fit_all_runs[time_Win_C], axis=0) )
-        WT_exit_fit_err.append( np.std(WT_exit_fit_all_runs[time_Win_C], axis=0) )
+        WT_enter_fit_err.append( np.std(WT_enter_fit_all_runs[time_Win_C], axis=0)/np.sqrt(N_runs-1) )
+        WT_exit_fit_err.append( np.std(WT_exit_fit_all_runs[time_Win_C], axis=0)/np.sqrt(N_runs-1) )
     
     for time_Win_C in range(N_time_windows):
         
@@ -641,7 +641,7 @@ def distributions_plotter():
        
         # Plotting the histogram
         plt.bar(bin_centers, WT_enter_fit_mean[time_Win_C], width=np.diff(bin_edges), align='center', alpha=0.7, color='blue')
-        plt.errorbar(bin_centers, WT_enter_fit_mean[time_Win_C], yerr=WT_enter_fit_err[time_Win_C], fmt='o', color='black', capsize=5, label="Std Dev")
+        plt.errorbar(bin_centers, WT_enter_fit_mean[time_Win_C], yerr=WT_enter_fit_err[time_Win_C], fmt='o', color='black', capsize=5)
         plt.xlabel("fitness")
         plt.ylabel("PDF")
         title = "AVG entering fitness dist " + "("+str(time_Win_C*0.25)+"* T_max)"
@@ -659,7 +659,7 @@ def distributions_plotter():
        
         # Plotting the histogram
         plt.bar(bin_centers, WT_exit_fit_mean[time_Win_C], width=np.diff(bin_edges), align='center', alpha=0.7, color='red')
-        plt.errorbar(bin_centers, WT_exit_fit_mean[time_Win_C], yerr=WT_exit_fit_err[time_Win_C], fmt='o', color='black', capsize=5, label="Std Dev")
+        plt.errorbar(bin_centers, WT_exit_fit_mean[time_Win_C], yerr=WT_exit_fit_err[time_Win_C], fmt='o', color='black', capsize=5)
         plt.xlabel("fitness")
         plt.ylabel("PDF")
         title = "AVG exiting fitness dist " + "("+str(time_Win_C*0.25)+"* T_max)"
@@ -670,7 +670,44 @@ def distributions_plotter():
     
     return
 
-N_runs = 10
+def heatmap_dist_plotter():
+    
+    phi_heatmap_mean = np.mean(phi_dist_3d, axis=0)
+    fit_heatmap_mean = np.mean(fit_dist_3d, axis=0)
+    
+    np.savetxt("overal_pp"+"/"+"phi_heatmap_mean.txt", phi_heatmap_mean, fmt='%1.6f', delimiter=',')
+    np.savetxt("overal_pp"+"/"+"fit_heatmap_mean.txt", fit_heatmap_mean, fmt='%1.6f', delimiter=',')
+
+    
+    # fitness
+    plt.figure()
+    X, Y = np.meshgrid(time, fit_hist_bins[0:-1])
+    plt.pcolormesh(X, Y, np.log(fit_heatmap_mean), shading='auto', cmap='viridis')
+    plt.colorbar(label="log(Intensity)")
+    plt.xlabel("time")
+    plt.ylabel("fitness")
+    title = 'AVG distribution of fitness (WT)'
+    plt.title(title)
+    file_name = 'AVG_fit_hist_WT.PNG'
+    plt.savefig(file_name, dpi=150)
+    plt.close()
+    
+    
+    # phi
+    plt.figure()
+    X, Y = np.meshgrid(time, phi_hist_bins[0:-1])
+    plt.pcolormesh(X, Y, np.log(phi_heatmap_mean), shading='auto', cmap='viridis')
+    plt.colorbar(label="Intensity")
+    plt.xlabel("time")
+    plt.ylabel("phi")
+    title = 'AVG distribution of phi (WT)'
+    plt.title(title)
+    file_name = 'AVG_phi_hist_WT.PNG'
+    plt.savefig(file_name, dpi=150)
+    plt.close()
+    
+    return
+N_runs = 20
 time = np.loadtxt("run_1/pp_data/time.txt", delimiter=',', dtype=float)
 N_samples = len(time)
 
@@ -692,6 +729,7 @@ WT_sg2m_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
 WT_g0_diff_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
 
 
+##### ent, ext, hist ############
 fit_hist_bins = np.loadtxt("run_1/pp_data/fit_hist_bins.txt", delimiter=',')
 phi_hist_bins = np.loadtxt("run_1/pp_data/phi_hist_bins.txt", delimiter=',')
 
@@ -699,6 +737,18 @@ N_time_windows = 5
 
 WT_enter_fit_all_runs = [np.zeros((N_runs, len(fit_hist_bins)-1)) for _ in range(N_time_windows)]
 WT_exit_fit_all_runs = [np.zeros((N_runs, len(fit_hist_bins)-1)) for _ in range(N_time_windows)]
+##### ent, ext, hist ############
+
+
+######## heatmap dists #######
+phi_heatmap_run_1 = np.loadtxt("run_1/pp_data/WT_phi_hist_data.txt", delimiter=',')
+n_rows , n_cols = np.shape(phi_heatmap_run_1)
+phi_dist_3d = np.zeros((N_runs,n_rows, n_cols))
+
+fit_heatmap_run_1 = np.loadtxt("run_1/pp_data/WT_fit_hist_data.txt", delimiter=',')
+n_rows , n_cols = np.shape(fit_heatmap_run_1)
+fit_dist_3d = np.zeros((N_runs,n_rows, n_cols))
+######## heatmap dists #######
 
 for runC in range(N_runs):
     folderName = "run_"+str(runC+1)
@@ -742,12 +792,18 @@ for runC in range(N_runs):
         WT_enter_fit_all_runs[time_Win_C][runC,:] = (np.loadtxt(folderName+"/pp_data/enter_fit_hist_plot_"+str(time_Win_C)+".txt", delimiter=',')).copy()
         WT_exit_fit_all_runs[time_Win_C][runC,:] = (np.loadtxt(folderName+"/pp_data/exit_fit_hist_plot_"+str(time_Win_C)+".txt", delimiter=',')).copy()
     ## distributions ##
+    
+    ## heatmap dists ##
+    fit_dist_3d[runC, :,:] = np.loadtxt(folderName+"/pp_data/WT_fit_hist_data.txt", delimiter=',')
+    phi_dist_3d[runC, :,:] = np.loadtxt(folderName+"/pp_data/WT_phi_hist_data.txt", delimiter=',')
+    ## heatmap dists ##
 
 ## overal plot
 exp_data_load_switch = 0
 save_switch = 1
 overal_plotter(exp_data_load_switch, save_switch)
 distributions_plotter()
+heatmap_dist_plotter()
 ## overal plot
 
 # ## overal save

@@ -693,7 +693,7 @@ if pp_variables['ent_ext_switch'] and variables['dt_sample']>0.051:
 
 ####### full temporal hists #############
 n_bins_fit = 30
-fit_hist_bins = np.linspace(variables['Fit_Th_Apop'], 1.5 * variables['typeFit0'][1], n_bins_fit+1)
+fit_hist_bins = np.linspace(variables['Fit_Th_Apop'], 2.0 * variables['typeFit0'][1], n_bins_fit+1)
 
 n_bins_phi = 50
 phi_hist_bins = np.linspace(0, 2*np.pi , n_bins_phi+1)
@@ -703,7 +703,7 @@ np.savetxt("pp_data"+"/"+"phi_hist_bins.txt", phi_hist_bins, fmt='%1.4f')
 ####### full temporal hists #############
 
 ####### flux hists #############
-Dt_dist = 10
+Dt_dist = 20
 time_window_list = []
 time_window_list.append([0, 0+Dt_dist])
 time_window_list.append([0.25*variables['maxTime']-Dt_dist/2., 0.25*variables['maxTime']+Dt_dist/2.])
@@ -976,13 +976,12 @@ np.savetxt("pp_data"+"/"+"WT_diff_stat.txt", WT_diff_stat, fmt='%d')
 np.savetxt("pp_data"+"/"+"WT_apop_stat.txt", WT_apop_stat, fmt='%d')
 np.savetxt("pp_data"+"/"+"WT_sg2m_stat.txt", WT_sg2m_stat, fmt='%d')
 
+np.savetxt("pp_data"+"/"+"WT_fit_hist_data.txt", WT_fit_hist_data, fmt='%1.4f', delimiter=',')
+np.savetxt("pp_data"+"/"+"CA_fit_hist_data.txt", CA_fit_hist_data, fmt='%1.4f', delimiter=',')
+np.savetxt("pp_data"+"/"+"WT_phi_hist_data.txt", WT_phi_hist_data, fmt='%1.4f', delimiter=',')
+np.savetxt("pp_data"+"/"+"CA_phi_hist_data.txt", CA_phi_hist_data, fmt='%1.4f', delimiter=',')
 
 if pp_variables['ent_ext_switch']:
-    np.savetxt("pp_data"+"/"+"WT_fit_hist_data.txt", WT_fit_hist_data, fmt='%1.4f')
-    np.savetxt("pp_data"+"/"+"CA_fit_hist_data.txt", CA_fit_hist_data, fmt='%1.4f')
-    np.savetxt("pp_data"+"/"+"WT_phi_hist_data.txt", WT_phi_hist_data, fmt='%1.4f')
-    np.savetxt("pp_data"+"/"+"CA_phi_hist_data.txt", CA_phi_hist_data, fmt='%1.4f')
-    
     ent_ext_fitness_dist_saver()
 
 stats_plotter("statistics")
