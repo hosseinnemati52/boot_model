@@ -770,12 +770,17 @@ int main()
                 while(int_rand_1 == MT_MIN || int_rand_1 == MT_MAX){int_rand_1 = mt_rand();}
                 int_rand_2 = mt_rand();
                 while(int_rand_2 == MT_MIN || int_rand_2 == MT_MAX){int_rand_2 = mt_rand();}
-
                 uniform_rand_1 = ((long double)(int_rand_1)-MT_MIN)/((long double)MT_MAX-MT_MIN);
                 uniform_rand_2 = ((long double)(int_rand_2)-MT_MIN)/((long double)MT_MAX-MT_MIN);
-
                 gauss_rand_1 =  pow( (-2.0 * log(uniform_rand_1)) , 0.5) * cos(2.0 * PI * uniform_rand_2); // Box-Muller transform
-                gauss_rand_2 =  pow( (-2.0 * log(uniform_rand_1)) , 0.5) * sin(2.0 * PI * uniform_rand_2); // Box-Muller transform
+
+                int_rand_1 = mt_rand();
+                while(int_rand_1 == MT_MIN || int_rand_1 == MT_MAX){int_rand_1 = mt_rand();}
+                int_rand_2 = mt_rand();
+                while(int_rand_2 == MT_MIN || int_rand_2 == MT_MAX){int_rand_2 = mt_rand();}
+                uniform_rand_1 = ((long double)(int_rand_1)-MT_MIN)/((long double)MT_MAX-MT_MIN);
+                uniform_rand_2 = ((long double)(int_rand_2)-MT_MIN)/((long double)MT_MAX-MT_MIN);
+                gauss_rand_2 =  pow( (-2.0 * log(uniform_rand_1)) , 0.5) * cos(2.0 * PI * uniform_rand_2); // Box-Muller transform
 
                 phiNoise = typeSigmaPhi[cellType_1] * sqrt_dt * gauss_rand_1;
                 fitNoise = typeSigmaFit[cellType_1] * sqrt_dt * gauss_rand_2;
