@@ -178,7 +178,7 @@ void initializer_specific(const int N_UpperLim, int* NCellsPtr, vector<int>& NCe
                  vector<double>& cellVx, vector<double>& cellVy, 
                  vector<double>& cellPhi, vector<int>& cellState, vector<double>& cellTheta,
                  vector<vector<double>>& cellFitness, const vector<double>& typeFit0, std::mt19937 &mt_rand,
-                 const double G1Border, const double Fit_Th_G0, const double Fit_Th_Apop);
+                 const double G1Border, const double Fit_Th_G0, const double Fit_Th_Apop, const vector<double>& typeSigmaFit);
 
 void initializer(const int N_UpperLim, int* NCellsPtr, vector<int>& NCellsPerType,
                  const vector<double> typeR0, const vector<double> typeR2PI, 
@@ -539,7 +539,7 @@ int main()
                  cellVx, cellVy, 
                  cellPhi, cellState, cellTheta,
                  cellFitness, typeFit0, mt_rand,
-                 G1Border, Fit_Th_G0, Fit_Th_Apop);
+                 G1Border, Fit_Th_G0, Fit_Th_Apop, typeSigmaFit);
 
     R_Area_calc(N_UpperLim, NCells, NTypes,
                 typeR0, typeR2PI, 
@@ -1034,7 +1034,7 @@ void initializer_specific(const int N_UpperLim, int* NCellsPtr, vector<int>& NCe
                  vector<double>& cellVx, vector<double>& cellVy, 
                  vector<double>& cellPhi, vector<int>& cellState, vector<double>& cellTheta,
                  vector<vector<double>>& cellFitness, const vector<double>& typeFit0, std::mt19937 &mt_rand,
-                 const double G1Border, const double Fit_Th_G0, const double Fit_Th_Apop)
+                 const double G1Border, const double Fit_Th_G0, const double Fit_Th_Apop, const vector<double>& typeSigmaFit)
 {
     // NCellsPerType[0] = 500;
     // NCellsPerType[1] = 50;
@@ -1091,6 +1091,8 @@ void initializer_specific(const int N_UpperLim, int* NCellsPtr, vector<int>& NCe
     int N_WT_SG2M = (int)(SG2M_frac * NCellsPerType[0]);
     int N_WT_G0Diff = (int)(G0Diff_frac * NCellsPerType[0]);
     int N_WT_G1 = NCellsPerType[0] - N_WT_SG2M - N_WT_G0Diff;
+    int N_WT_G1_free = (int)((0.27/0.6) * N_WT_G1);
+    int N_WT_G1_bound = N_WT_G1 - N_WT_G1_free;
     // specific phi and F for initialization
 
     int cellC = 0;
@@ -1101,14 +1103,23 @@ void initializer_specific(const int N_UpperLim, int* NCellsPtr, vector<int>& NCe
 
         if (cellC < N_WT_G1) // The ones in G1
         {
-            // random_float = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
-            random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
-            cellPhi[cellC] = random_float * (G1Border * 2*PI);
-
+            if (cellC < N_WT_G1_free)
+            {
+                // random_float = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+                random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
+                cellPhi[cellC] = random_float * 0.95 * (G1Border * 2*PI);
+            }
+            else if (cellC < N_WT_G1_free+N_WT_G1_bound)
+            {
+                // random_float = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+                random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
+                cellPhi[cellC] = 0.9 * (G1Border * 2*PI) + random_float * 0.05 * (G1Border * 2*PI);
+            }
+            
             cellState[cellC] = CYCLING_STATE; 
 
             random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
-            cellFitness[cellC][0] = typeFit0[typeInd] + (2*random_float-1) * (typeFit0[typeInd]-Fit_Th_G0);
+            cellFitness[cellC][0] = typeFit0[typeInd] + (2*random_float-1) * typeSigmaFit[0];
             cellFitness[cellC][1] = 0.0;
 
         } else if (cellC < N_WT_G1+N_WT_SG2M) // The ones in SG2M
@@ -1120,7 +1131,7 @@ void initializer_specific(const int N_UpperLim, int* NCellsPtr, vector<int>& NCe
             cellState[cellC] = CYCLING_STATE; 
 
             random_float = ((long double)(mt_rand())-MT_MIN)/((long double)MT_MAX-MT_MIN);
-            cellFitness[cellC][0] = typeFit0[typeInd] + (2*random_float-1) * (typeFit0[typeInd]-Fit_Th_G0);
+            cellFitness[cellC][0] = typeFit0[typeInd] +typeSigmaFit[0]+ (2*random_float-1) * typeSigmaFit[0];
             cellFitness[cellC][1] = 0.0;
 
         } else // The ones in G0/Diff
