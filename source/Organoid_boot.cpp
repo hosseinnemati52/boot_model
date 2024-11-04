@@ -225,6 +225,8 @@ std::vector<std::vector<int>> IntTranspose(const std::vector<std::vector<int>>& 
 std::vector<std::vector<double>> DoubleTranspose(const std::vector<std::vector<double>>& matrix);
 
 void writeFitnessToFile(const std::vector<std::vector<std::vector<double>>>& matrix, const int N_rows_desired, const int N_cols_desired, const std::string& filename);
+
+void writeVecOfVecsUnequal(const std::vector<std::vector<double>>& vec_of_vecs, const int N_desired, const std::string& filename);
 //////////////////////////////////////////////////////////////////////////
 ////////////////////////////// PROTOTYPES ////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
@@ -470,6 +472,8 @@ int main()
     vector<double> cellR(N_UpperLim); // The radius of each cell. It may change time to time.
     vector<double> cellArea(N_UpperLim); // The area of each cell. It may change time to time.
     vector<vector<double>> cellFitness(N_UpperLim, vector<double>(2)); // This stores the complex fitness of cells (Real and Imaginary parts).
+
+    vector<vector<double>> divisionTimes(N_UpperLim); // the times at which cells divide
 
     ///////////// BUNCHES FOR WRITING SAMPLES /////////////////
     vector<double> tBunch;
@@ -1016,6 +1020,9 @@ int main()
                 // cellState[cellC_1] = cellState[cellC_1];
                 // original cell
 
+                divisionTimes[newBornInd].push_back(t);
+                divisionTimes[cellC_1].push_back(t);
+
                 newBornInd++;
                 newBornCells++;
 
@@ -1136,6 +1143,15 @@ int main()
                                 cellStateBunch, \
                                 cellFitnessBunch, \
                                 saved_bunch_index);
+
+                // write the division times, and clear it
+                std::string divisionTimesFileName = "divisionTimes_"+std::to_string(saved_bunch_index)+".txt";
+                writeVecOfVecsUnequal(divisionTimes, NCells, dataFolderName+"/"+divisionTimesFileName);
+                for (int cellC_divTimes = 0; cellC_divTimes < NCells; cellC_divTimes++)
+                {
+                    divisionTimes[cellC_divTimes].clear();
+                }
+                
 
                 cout<<"t = "<<t<<endl;
 
@@ -2154,6 +2170,33 @@ void dataBunchWriter(const int NCells, \
     writeFitnessToFile(cellFitnessBunch, NCells, bunchLength, "data/Fit_"+ to_string(saved_bunch_index) + ".txt");
     
 
+}
+
+void writeVecOfVecsUnequal(const std::vector<std::vector<double>>& vec_of_vecs,
+                           const int N_desired, const std::string& filename) {
+    // Open the file to write
+    std::ofstream outfile(filename);
+
+    if (outfile.is_open()) {
+        // Loop over each vector in vec_of_vecs up to N_desired inner vectors
+        for (size_t i = 0; i < vec_of_vecs.size() && i < N_desired; ++i) {
+            const auto& inner_vec = vec_of_vecs[i];
+            
+            if (!inner_vec.empty()) { // Only write non-empty vectors
+                // Write each element in the inner vector
+                for (size_t j = 0; j < inner_vec.size(); ++j) {
+                    outfile << std::fixed << std::setprecision(6) << inner_vec[j];
+                    if (j < inner_vec.size() - 1) { // Add a comma if it's not the last element
+                        outfile << ",";
+                    }
+                }
+            }
+            outfile << "\n"; // Newline
+        }
+        outfile.close(); // Close the file
+    } else {
+        std::cerr << "Unable to open file: " << filename << std::endl;
+    }
 }
 //////////////////////////////////////////////////////////////////////////
 ////////////////////////////// FUNCTIONS /////////////////////////////////
