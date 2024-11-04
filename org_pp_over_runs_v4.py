@@ -21,6 +21,7 @@ import matplotlib.colors as mcolors
 import re
 import subprocess
 import os
+import seaborn as sns
 
 CYCLING_STATE =   (1)
 G1_ARR_STATE =    (-1)
@@ -670,7 +671,169 @@ def distributions_plotter():
     
     return
 
-N_runs = 20
+def heatmap_dist_plotter():
+    
+    phi_heatmap_mean = np.mean(phi_dist_3d, axis=0)
+    fit_heatmap_mean = np.mean(fit_dist_3d, axis=0)
+    
+    np.savetxt("overal_pp"+"/"+"phi_heatmap_mean.txt", phi_heatmap_mean, fmt='%1.6f', delimiter=',')
+    np.savetxt("overal_pp"+"/"+"fit_heatmap_mean.txt", fit_heatmap_mean, fmt='%1.6f', delimiter=',')
+
+    
+    # fitness
+    plt.figure()
+    X, Y = np.meshgrid(time, fit_hist_bins[0:-1])
+    plt.pcolormesh(X, Y, np.log(fit_heatmap_mean), shading='auto', cmap='viridis')
+    plt.colorbar(label="log(Intensity)")
+    plt.xlabel("time")
+    plt.ylabel("fitness")
+    title = 'AVG distribution of fitness (WT)'
+    plt.title(title)
+    file_name = 'AVG_fit_hist_WT.PNG'
+    plt.savefig(file_name, dpi=150)
+    plt.close()
+    
+    
+    # phi
+    plt.figure()
+    X, Y = np.meshgrid(time, phi_hist_bins[0:-1])
+    plt.pcolormesh(X, Y, np.log(phi_heatmap_mean), shading='auto', cmap='viridis')
+    plt.colorbar(label="Intensity")
+    plt.xlabel("time")
+    plt.ylabel("phi")
+    title = 'AVG distribution of phi (WT)'
+    plt.title(title)
+    file_name = 'AVG_phi_hist_WT.PNG'
+    plt.savefig(file_name, dpi=150)
+    plt.close()
+    
+    return
+
+def growth_factor_plotter():
+    
+    plt.figure()
+    
+    # Combine data and labels for box plot
+    combined_data = [WT_growth_factors, C_growth_factors]
+    sns.boxplot(data=combined_data, palette=["purple", "green"], width=0.5, showfliers=False)
+    
+    # Scatter data points over the box plot for WT and C
+    x_positions = np.array([0, 1])
+    jitter_amount = 0.08  # Spread for scattered points to avoid overlap
+    
+    # Scatter WT data points in purple
+    plt.scatter(np.random.normal(x_positions[0], jitter_amount, size=len(WT_growth_factors)), WT_growth_factors, 
+                color="purple", alpha=0.7, edgecolor="black", label="WT")
+    
+    # Scatter C data points in green
+    plt.scatter(np.random.normal(x_positions[1], jitter_amount, size=len(C_growth_factors)), C_growth_factors, 
+                color="green", alpha=0.7, edgecolor="black", label="C")
+    
+    # Adding titles and labels
+    title = "growth ratio at t = 60 h"
+    plt.title(title)
+    plt.xticks(ticks=[0, 1], labels=["WT", "C"])
+    plt.xlabel("Type")
+    plt.ylabel(r"$N/N_0$")
+    plt.grid()
+    plt.legend(fontsize=15)
+    plt.savefig("growth_box.PNG", dpi=300)
+    
+    
+    # plt.figure()
+    # plt.scatter(WT_init_percent, WT_growth_factors, color="purple")
+    # plt.xlabel("starting ratio (% WT at t=0)", fontsize=12)
+    # plt.ylabel(r"N/N_0", fontsize=15)
+    # plt.title("WT cells in mixed organoids")
+    # plt.savefig("growth_vs_perc_WT.PNG", dpi=300)
+    plt.figure()
+    plt.scatter(WT_init_percent, WT_growth_factors, color="purple")
+    # Fit a linear regression line
+    slope, intercept = np.polyfit(WT_init_percent, WT_growth_factors, 1)
+    trendline = np.poly1d((slope, intercept))
+    plt.plot(WT_init_percent, trendline(WT_init_percent), color="purple", linestyle="--", label="Fit Line")
+    # Labels and title
+    plt.xlabel("Starting ratio (% WT at t=0)", fontsize=20)
+    plt.ylabel(r"$N/N_0$", fontsize=20)
+    plt.xticks(fontsize=20)
+    plt.yticks(fontsize=20)
+    # plt.title("WT cells in mixed organoids")
+    # Optional: show legend for the fit line
+    # plt.legend()
+    # Save the figure
+    plt.tight_layout()
+    plt.savefig("growth_vs_perc_WT.PNG", dpi=300)
+    plt.show()
+    
+    
+    
+    # plt.figure()
+    # plt.scatter(1-WT_init_percent, C_growth_factors, color='green')
+    # plt.xlabel("starting ratio (% C at t=0)", fontsize=12)
+    # plt.ylabel(r"N/N_0", fontsize=15)
+    # plt.title("C cells in mixed organoids")
+    # plt.savefig("growth_vs_perc_C.PNG", dpi=300)
+    
+    plt.figure()
+    plt.scatter(1 - WT_init_percent, C_growth_factors, color='green')
+    # Fit a linear regression line
+    slope, intercept = np.polyfit(1 - WT_init_percent, C_growth_factors, 1)
+    trendline = np.poly1d((slope, intercept))
+    plt.plot(1 - WT_init_percent, trendline(1 - WT_init_percent), color="g", linestyle="--", label="Fit Line")
+    # Labels and title
+    plt.xlabel("Starting ratio (% C at t=0)", fontsize=20)
+    plt.ylabel(r"$N/N_0$", fontsize=20)
+    plt.xticks(fontsize=20)
+    plt.yticks(fontsize=20)
+    # plt.title("C cells in mixed organoids")
+    # Optional: show legend for the fit line
+    # plt.legend()
+    # Save the figure
+    plt.tight_layout()
+    plt.savefig("growth_vs_perc_C.PNG", dpi=300)
+    plt.show()
+    
+    return
+
+def states_box_plotter():
+    
+    plt.figure()
+    
+    # Combine data and labels for box plot
+    combined_data = [WT_G1_fractions, WT_SG2M_fractions, WT_G0_fractions]
+    sns.boxplot(data=combined_data, palette=["purple", "yellow", "grey"], width=0.5, showfliers=False)
+    
+    # Scatter data points over the box plot for WT and C
+    x_positions = np.array([0, 1, 2])
+    jitter_amount = 0.08  # Spread for scattered points to avoid overlap
+    
+    # Scatter WT data points in purple
+    plt.scatter(np.random.normal(x_positions[0], jitter_amount, size=len(WT_G1_fractions)), WT_G1_fractions, 
+                color="purple", alpha=0.7, edgecolor="black", label="G1 percentage")
+    
+    # Scatter C data points in green
+    plt.scatter(np.random.normal(x_positions[1], jitter_amount, size=len(WT_SG2M_fractions)), WT_SG2M_fractions, 
+                color="yellow", alpha=0.7, edgecolor="black", label="S/G2/M percentage")
+    
+    plt.scatter(np.random.normal(x_positions[2], jitter_amount, size=len(WT_G0_fractions)), WT_G0_fractions, 
+                color="grey", alpha=0.7, edgecolor="black", label="G0 percentage")
+    
+    # Adding titles and labels
+    title = "WT phases distribution at t = 60 h"
+    plt.title(title)
+    plt.xticks(ticks=[0, 1, 2], labels=["G1", "S/G2/M", "G0"])
+    plt.xlabel("Cell state", fontsize=15)
+    plt.ylabel("percent", fontsize=15)
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    plt.grid()
+    plt.legend(fontsize=15)
+    plt.tight_layout()
+    plt.savefig("states_stats.PNG", dpi=300)
+    
+    return
+
+N_runs = 60
 time = np.loadtxt("run_1/pp_data/time.txt", delimiter=',', dtype=float)
 N_samples = len(time)
 
@@ -692,6 +855,7 @@ WT_sg2m_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
 WT_g0_diff_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
 
 
+##### ent, ext, hist ############
 fit_hist_bins = np.loadtxt("run_1/pp_data/fit_hist_bins.txt", delimiter=',')
 phi_hist_bins = np.loadtxt("run_1/pp_data/phi_hist_bins.txt", delimiter=',')
 
@@ -699,6 +863,31 @@ N_time_windows = 5
 
 WT_enter_fit_all_runs = [np.zeros((N_runs, len(fit_hist_bins)-1)) for _ in range(N_time_windows)]
 WT_exit_fit_all_runs = [np.zeros((N_runs, len(fit_hist_bins)-1)) for _ in range(N_time_windows)]
+##### ent, ext, hist ############
+
+
+######## heatmap dists #######
+phi_heatmap_run_1 = np.loadtxt("run_1/pp_data/WT_phi_hist_data.txt", delimiter=',')
+n_rows , n_cols = np.shape(phi_heatmap_run_1)
+phi_dist_3d = np.zeros((N_runs,n_rows, n_cols))
+
+fit_heatmap_run_1 = np.loadtxt("run_1/pp_data/WT_fit_hist_data.txt", delimiter=',')
+n_rows , n_cols = np.shape(fit_heatmap_run_1)
+fit_dist_3d = np.zeros((N_runs,n_rows, n_cols))
+######## heatmap dists #######
+
+growth_factor_time = 60
+for tC in range(len(time)):
+    if np.abs(time[tC]-growth_factor_time)<(1e-6):
+        growth_factor_tC = tC
+WT_growth_factors = np.zeros(N_runs)
+C_growth_factors = np.zeros(N_runs)
+WT_init_percent = np.zeros(N_runs)
+
+WT_G1_fractions =  np.zeros(N_runs)
+WT_SG2M_fractions =  np.zeros(N_runs)
+WT_G0_fractions =  np.zeros(N_runs)
+
 
 for runC in range(N_runs):
     folderName = "run_"+str(runC+1)
@@ -718,6 +907,14 @@ for runC in range(N_runs):
     WT_g1_tot_stat = np.loadtxt(folderName+"/pp_data/WT_g1_tot_stat.txt", delimiter=',', dtype=int)
     WT_sg2m_stat = np.loadtxt(folderName+"/pp_data/WT_sg2m_stat.txt", delimiter=',', dtype=int)
     
+    
+    WT_growth_factors[runC] = WT_alive_stat[growth_factor_tC]/WT_alive_stat[0]
+    C_growth_factors[runC] = C_alive_stat[growth_factor_tC]/C_alive_stat[0]
+    WT_init_percent[runC] = WT_alive_stat[0] / alive_stat[0]
+    
+    WT_G1_fractions[runC] = WT_g1_tot_stat[growth_factor_tC] / WT_alive_stat[growth_factor_tC]
+    WT_G0_fractions[runC] = WT_g0_stat[growth_factor_tC] / WT_alive_stat[growth_factor_tC]
+    WT_SG2M_fractions[runC] = 1 - WT_G1_fractions[runC] - WT_G0_fractions[runC]
     
     alive_stat_overal[runC, :] = alive_stat.copy()
     
@@ -742,12 +939,33 @@ for runC in range(N_runs):
         WT_enter_fit_all_runs[time_Win_C][runC,:] = (np.loadtxt(folderName+"/pp_data/enter_fit_hist_plot_"+str(time_Win_C)+".txt", delimiter=',')).copy()
         WT_exit_fit_all_runs[time_Win_C][runC,:] = (np.loadtxt(folderName+"/pp_data/exit_fit_hist_plot_"+str(time_Win_C)+".txt", delimiter=',')).copy()
     ## distributions ##
+    
+    ## heatmap dists ##
+    fit_dist_3d[runC, :,:] = np.loadtxt(folderName+"/pp_data/WT_fit_hist_data.txt", delimiter=',')
+    phi_dist_3d[runC, :,:] = np.loadtxt(folderName+"/pp_data/WT_phi_hist_data.txt", delimiter=',')
+    ## heatmap dists ##
+
+
+np.savetxt("overal_pp"+"/"+"WT_growth_factors.txt", WT_growth_factors, fmt='%.4f', delimiter=',')
+np.savetxt("overal_pp"+"/"+"C_growth_factors.txt", C_growth_factors, fmt='%.4f', delimiter=',')
+np.savetxt("overal_pp"+"/"+"WT_init_percent.txt", WT_init_percent, fmt='%.4f', delimiter=',')
+np.savetxt("overal_pp"+"/"+"growth_factor_time.txt", [growth_factor_time], fmt='%.4f', delimiter=',')
+
+np.savetxt("overal_pp"+"/"+"WT_G1_fractions.txt", WT_G1_fractions, fmt='%.4f', delimiter=',')
+np.savetxt("overal_pp"+"/"+"WT_G0_fractions.txt", WT_G0_fractions, fmt='%.4f', delimiter=',')
+np.savetxt("overal_pp"+"/"+"WT_SG2M_fractions.txt", WT_SG2M_fractions, fmt='%.4f', delimiter=',')
+
+
+
+growth_factor_plotter()
+states_box_plotter()
 
 ## overal plot
 exp_data_load_switch = 0
 save_switch = 1
 overal_plotter(exp_data_load_switch, save_switch)
 distributions_plotter()
+heatmap_dist_plotter()
 ## overal plot
 
 # ## overal save

@@ -1,4 +1,4 @@
-declare -i N=20
+declare -i N=30
 declare -i N0=1
 
 #

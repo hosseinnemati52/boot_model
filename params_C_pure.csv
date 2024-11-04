@@ -50,7 +50,7 @@ printingTimeInterval = 1.0
 ############### GAME ##############
 R_cut_coef_game = 1.1
 tau = 999999
-typeTypePayOff_mat_real_C = [[0.000, -0.014];[0.014, 0.00]]
+typeTypePayOff_mat_real_C = [[0.000, -0.0225];[0.0225, 0.00]]
 typeTypePayOff_mat_real_F1 = [[-0.00, 0];[0, -0.00]]
 typeTypePayOff_mat_real_F2 = [[0.00, 0];[0, 0.00]]
 typeTypePayOff_mat_imag_C = [[0.000, 0.0];[0.0, 0.00]]

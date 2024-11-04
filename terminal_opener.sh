@@ -11,7 +11,7 @@ run_file_in_terminal() {
 }
 
 # Loop to run the script in 20 different folders
-for i in {1..20}
+for i in {1..30}
 do
   folder="run_$i"
   title="Terminal $i"
