@@ -844,18 +844,32 @@ divTimesList = []
 while(1):
     
     ## for divTimes files
+    ## The bunch index here is not like the other data. Be careful! It is only a file index.
     with open("data/divisionTimes_"+str(bunchInd)+".txt", 'r') as divTimesFile:
         lineC = -1
         for line in divTimesFile:
             lineC += 1
-            if lineC
-            # Strip whitespace from the line
+            
             stripped_line = line.strip()
+            
+            if lineC < len(divTimesList):
+                if (line.strip()): # not empty
+                    numbers = [float(num) for num in stripped_line.split(',')]
+                    divTimesList.append(numbers)
+                else: # empty line
+                    
+                    divTimesList.append([])
+            elif not (line.strip()): # the line is empty
+                pass
+            else:
+                
+            
+            # Strip whitespace from the line
+            
             
             if stripped_line:  # If the line is not empty
                 # Convert the line to a list of floats, split by commas
-                numbers = [float(num) for num in stripped_line.split(',')]
-                divTimesList.append(numbers)
+                
             else:  # For empty lines, append an empty list
                 divTimesList.append([])
                 
