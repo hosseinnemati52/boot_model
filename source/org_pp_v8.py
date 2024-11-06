@@ -661,6 +661,75 @@ def ent_ext_fitness_dist_saver():
 
 def mean_cycle_time_func():
     
+    # WT_division_time = []
+    # CA_division_time = []
+    
+    WT_dt = []
+    CA_dt = []
+    
+    for i in range(len(divTimesList)):
+        
+
+        dummy_list = list(np.diff(divTimesList[i]))
+            
+        if cellType[i] == WT_CELL_TYPE:
+            WT_dt = WT_dt.copy() + dummy_list.copy()
+        elif cellType[i] == CA_CELL_TYPE:
+            CA_dt = CA_dt.copy() + dummy_list.copy()
+        
+        dummy_list.clear()
+    
+    np.savetxt("pp_data/WT_div_dt.txt", WT_dt, delimiter=',')
+    np.savetxt("pp_data/CA_div_dt.txt", CA_dt, delimiter=',')
+    
+    WT = WT_dt.copy()
+    CA = CA_dt.copy()
+    
+    
+    
+    
+    # Calculate mean and standard deviation for WT and CA
+    wt_mean, wt_std = np.mean(WT), np.std(WT)
+    ca_mean, ca_std = np.mean(CA), np.std(CA)
+    
+    # Plot histograms
+    plt.figure(figsize=(10, 6))
+    hist_CA, bins_CA, _ = plt.hist(CA, bins=15, color='green', alpha=0.5, label='CA', edgecolor='black', density=True)
+    hist_WT, bins_WT, _ = plt.hist(WT, bins=15, color='purple', alpha=0.7, label='WT', edgecolor='black', density=True)
+    
+    # Find the maximum heights for both histograms
+    max_CA = max(hist_CA)
+    max_WT = max(hist_WT)
+    
+    
+    # Position scatter points and whiskers just above the highest bar
+    wt_max_freq = max(np.histogram(WT, bins=15)[0])
+    ca_max_freq = max(np.histogram(CA, bins=15)[0])
+    scatter_y_pos = max(max_CA, max_WT)*1.1
+    scatter_y_pos_c = scatter_y_pos *1.1
+    
+    # Scatter plot for the means with whiskers on top
+    plt.scatter(wt_mean, scatter_y_pos, color='purple', s=100, marker='o', label=f'WT Mean: {wt_mean:.2f}')
+    plt.scatter(ca_mean, scatter_y_pos_c, color='green', s=100, marker='o', label=f'CA Mean: {ca_mean:.2f}')
+    plt.errorbar(wt_mean, scatter_y_pos, xerr=wt_std, fmt='o', color='purple', capsize=5, label=f'WT ±1 STD: {wt_std:.2f}')
+    plt.errorbar(ca_mean, scatter_y_pos_c, xerr=ca_std, fmt='o', color='green', capsize=5, label=f'CA ±1 STD: {ca_std:.2f}')
+    
+    # Labels and title
+    plt.xlabel("division dt", fontsize=15)
+    plt.ylabel("PDF of div_dt", fontsize=15)
+    plt.title("Division times of WT and CA cells")
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    # Adjust y-axis
+    plt.ylim(0, plt.ylim()[1] * 1.1)
+    
+    # Add legend
+    plt.legend(fontsize=15)
+    
+    # Show grid
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    
+    plt.savefig("divTimesHist.PNG", dpi=150)
     
     
     return
@@ -843,39 +912,32 @@ divTimesList = []
 ######## Simulation loop ###########
 while(1):
     
-    ## for divTimes files
-    ## The bunch index here is not like the other data. Be careful! It is only a file index.
-    with open("data/divisionTimes_"+str(bunchInd)+".txt", 'r') as divTimesFile:
-        lineC = -1
-        for line in divTimesFile:
-            lineC += 1
-            
-            stripped_line = line.strip()
-            
-            if lineC < len(divTimesList):
-                if (line.strip()): # not empty
-                    numbers = [float(num) for num in stripped_line.split(',')]
-                    divTimesList.append(numbers)
-                else: # empty line
-                    
-                    divTimesList.append([])
-            elif not (line.strip()): # the line is empty
-                pass
-            else:
-                
-            
-            # Strip whitespace from the line
-            
-            
-            if stripped_line:  # If the line is not empty
-                # Convert the line to a list of floats, split by commas
-                
-            else:  # For empty lines, append an empty list
-                divTimesList.append([])
-                
-    ## for divTimes files
     
     try:
+        ## for divTimes files
+        ## The bunch index here is not like the other data. Be careful! It is only a file index.
+        with open("data/divisionTimes_"+str(bunchInd)+".txt", 'r') as divTimesFile:
+            lineC = -1
+            for line in divTimesFile:
+                lineC += 1
+                
+                stripped_line = line.strip()
+                
+                if lineC >= len(divTimesList):
+                    if (line.strip()): # not empty
+                        numbers = [float(num) for num in stripped_line.split(',')]
+                        divTimesList.append(numbers)
+                    else: # empty line
+                        divTimesList.append([])
+                else:
+                    if not (line.strip()): # the line is empty
+                        pass
+                    else:
+                        numbers = [float(num) for num in stripped_line.split(',')]
+                        divTimesList[lineC] = divTimesList[lineC].copy() + numbers.copy()
+        divTimesFile.close()
+        ## for divTimes files
+        
         t_bunch = np.loadtxt('data/t_'+str(bunchInd)+'.txt', delimiter=',')
         X_bunch = np.loadtxt('data/X_'+str(bunchInd)+'.txt', delimiter=',')
         Y_bunch = np.loadtxt('data/Y_'+str(bunchInd)+'.txt', delimiter=',')
