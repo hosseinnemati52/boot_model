@@ -99,8 +99,13 @@ def read_custom_csv(filename):
     
     G1Border = variables.get('G1Border', None)
     
+    typeOmega = variables.get('typeOmega', None)
+    typeBarrierW = variables.get('typeBarrierW', None)
+    typeSigmaPhi = variables.get('typeSigmaPhi', None)
+    typeSigmaFit = variables.get('typeSigmaFit', None)
+    barrierPeakCoef = variables.get('barrierPeakCoef', None)
     typeFit0 = variables.get('typeFit0', None)
-    Fit_Th_G1_arr = variables.get('Fit_Th_G1_arr', None)
+    Fit_Th_Wall = variables.get('Fit_Th_Wall', None)
     Fit_Th_G0 = variables.get('Fit_Th_G0', None)
     Fit_Th_Diff = variables.get('Fit_Th_Diff', None)
     Fit_Th_Apop = variables.get('Fit_Th_Apop', None)
@@ -112,7 +117,6 @@ def read_custom_csv(filename):
     printingTimeInterval = variables.get('printingTimeInterval', None)
     
     R_cut_coef_game = variables.get('R_cut_coef_game', None)
-    typeGameNoiseSigma = variables.get('typeGameNoiseSigma', None)
     tau = variables.get('tau', None)
     typeTypePayOff_mat_real_C = variables.get('typeTypePayOff_mat_real_C', None)
     typeTypePayOff_mat_real_F1 = variables.get('typeTypePayOff_mat_real_F1', None)
@@ -123,6 +127,7 @@ def read_custom_csv(filename):
     
     # typeOmega0 = variables.get('typeOmega0', None)
     # typeOmegaLim = variables.get('typeOmegaLim', None)
+    newBornFitKey = variables.get('newBornFitKey', None)
     
     initConfig = variables.get('initConfig', None)
     
@@ -145,8 +150,13 @@ def read_custom_csv(filename):
         
         'G1Border' : G1Border,
         
+        'typeOmega' : typeOmega,
+        'typeBarrierW' : typeBarrierW,
+        'typeSigmaPhi' : typeSigmaPhi,
+        'typeSigmaFit' : typeSigmaFit,
+        'barrierPeakCoef' : barrierPeakCoef,
         'typeFit0' : typeFit0,
-        'Fit_Th_G1_arr' : Fit_Th_G1_arr,
+        'Fit_Th_Wall' : Fit_Th_Wall,
         'Fit_Th_G0' : Fit_Th_G0,
         'Fit_Th_Diff' : Fit_Th_Diff,
         'Fit_Th_Apop' : Fit_Th_Apop,
@@ -156,11 +166,8 @@ def read_custom_csv(filename):
         'dt_sample': dt_sample,
         'samplesPerWrite': samplesPerWrite,
         'printingTimeInterval': printingTimeInterval,
-        
-        'R_cut_coef_game': R_cut_coef_game,
-        
+                
         'R_cut_coef_game' : R_cut_coef_game,
-        'typeGameNoiseSigma' : typeGameNoiseSigma,
         'tau' :tau,
         'typeTypePayOff_mat_real_C' :typeTypePayOff_mat_real_C,
         'typeTypePayOff_mat_real_F1' :typeTypePayOff_mat_real_F1,
@@ -168,6 +175,8 @@ def read_custom_csv(filename):
         'typeTypePayOff_mat_imag_C' :typeTypePayOff_mat_imag_C,
         'typeTypePayOff_mat_imag_F1' :typeTypePayOff_mat_imag_F1,
         'typeTypePayOff_mat_imag_F2' :typeTypePayOff_mat_imag_F2,
+        
+        'newBornFitKey' : newBornFitKey,
         
         'initConfig': initConfig
     }
@@ -501,23 +510,36 @@ def overal_plotter(exp_data_load_switch, save_switch):
         np.savetxt("overal_pp"+"/"+data_label+"_ov_pl"+".txt", save_array, fmt='%.4f', delimiter=',')
     
     if exp_data_load_switch:
-        # x, y, y_err = exp_data_loader()
+        #C_mix
         exp_array = np.loadtxt("exp_data"+"/"+"C_bar_mix_overal.csv", delimiter=',')
-        
         x = exp_array[0,:]
         y = exp_array[1,:]
         y_err = exp_array[2,:]
-        
-        plt.scatter(x, y, label='exp_C')
+        plt.scatter(x, y, label='exp_C_mix')
         plt.errorbar(x, y, yerr=y_err, fmt='o')
         
+        #WT_mix
         exp_array = np.loadtxt("exp_data"+"/"+"WT_bar_mix_overal.csv", delimiter=',')
-        
         x = exp_array[0,:]
         y = exp_array[1,:]
         y_err = exp_array[2,:]
+        plt.scatter(x, y, label='exp_WT_mix')
+        plt.errorbar(x, y, yerr=y_err, fmt='o')
         
-        plt.scatter(x, y, label='exp_WT')
+        #C_pure
+        exp_array = np.loadtxt("exp_data"+"/"+"overal_C_pure.csv", delimiter=',')
+        x = exp_array[0,:]
+        y = exp_array[1,:]
+        y_err = exp_array[2,:]
+        plt.scatter(x, y, label='exp_C_pure')
+        plt.errorbar(x, y, yerr=y_err, fmt='o')
+        
+        #WT_pure
+        exp_array = np.loadtxt("exp_data"+"/"+"overal_WT_pure.csv", delimiter=',')
+        x = exp_array[0,:]
+        y = exp_array[1,:]
+        y_err = exp_array[2,:]
+        plt.scatter(x, y, label='exp_WT_pure')
         plt.errorbar(x, y, yerr=y_err, fmt='o')
         
         
@@ -635,38 +657,97 @@ def distributions_plotter():
     
     for time_Win_C in range(N_time_windows):
         
-        plt.figure()
+        fig, ax1 = plt.subplots()
+
         # Calculate the bin centers from bin edges
-        bin_edges = fit_hist_bins
+        bin_edges = fit_hist_bins_focused
         bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
-       
-        # Plotting the histogram
-        plt.bar(bin_centers, WT_enter_fit_mean[time_Win_C], width=np.diff(bin_edges), align='center', alpha=0.7, color='blue')
-        plt.errorbar(bin_centers, WT_enter_fit_mean[time_Win_C], yerr=WT_enter_fit_err[time_Win_C], fmt='o', color='black', capsize=5)
-        plt.xlabel("fitness")
-        plt.ylabel("PDF")
-        title = "AVG entering fitness dist " + "("+str(time_Win_C*0.25)+"* T_max)"
+        
+        # Plotting the histogram on the left y-axis
+        ax1.bar(bin_centers, WT_enter_fit_mean[time_Win_C], width=np.diff(bin_edges), align='center', alpha=0.7, color='blue', label='Histogram')
+        ax1.errorbar(bin_centers, WT_enter_fit_mean[time_Win_C], yerr=WT_enter_fit_err[time_Win_C], fmt='o', color='black', capsize=5, label='Error Bars')
+        
+        # Vertical line for threshold
+        ax1.axvline(x=variables['Fit_Th_Wall'], color='gray', linestyle='--', label='Threshold')
+        
+        # Label for the left y-axis
+        ax1.set_ylabel("PDF", color='blue')
+        
+        # Create a secondary y-axis for the barrier plot
+        ax2 = ax1.twinx()
+        
+        # Generate and plot the barrier curve on the right y-axis
+        x_barrier_plot = np.linspace(variables['Fit_Th_Wall'] + 0.01, bin_centers[-1], 1000)
+        y_barrier_plot = variables['barrierPeakCoef'] / (x_barrier_plot - variables['Fit_Th_Wall'])
+        ax2.plot(x_barrier_plot, y_barrier_plot, color='red', zorder=10, label='V(F)')
+        
+        # Label for the right y-axis
+        ax2.set_ylabel("Barrier Values", color='red')
+        
+        # Label for the x-axis
+        ax1.set_xlabel("Fitness")
+        
+        # Title of the plot
+        title = "AVG WT entering fitness dist (" + str(time_Win_C * 0.25) + "* T_max)"
         plt.title(title)
-        fileName = "AVG_enter_fit_"+str(int(time_Win_C))
+        
+        # Add legends
+        ax1.legend(loc='upper left')
+        ax2.legend(loc='upper right')
+        
+        # Save the plot with a specified file name
+        fileName = "AVG_enter_fit_" + str(int(time_Win_C))
         plt.savefig(fileName, dpi=200)
+    
+        # Close the plot to avoid display
         plt.close()
         
     for time_Win_C in range(N_time_windows):
         
-        plt.figure()
+        # Create a new figure and axis
+        fig, ax1 = plt.subplots()
+        
         # Calculate the bin centers from bin edges
-        bin_edges = fit_hist_bins
+        bin_edges = fit_hist_bins_focused
         bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
-       
-        # Plotting the histogram
-        plt.bar(bin_centers, WT_exit_fit_mean[time_Win_C], width=np.diff(bin_edges), align='center', alpha=0.7, color='red')
-        plt.errorbar(bin_centers, WT_exit_fit_mean[time_Win_C], yerr=WT_exit_fit_err[time_Win_C], fmt='o', color='black', capsize=5)
-        plt.xlabel("fitness")
-        plt.ylabel("PDF")
-        title = "AVG exiting fitness dist " + "("+str(time_Win_C*0.25)+"* T_max)"
+        
+        # Plotting the histogram on the left y-axis
+        ax1.bar(bin_centers, WT_exit_fit_mean[time_Win_C], width=np.diff(bin_edges), align='center', alpha=0.7, color='red', label='Histogram')
+        ax1.errorbar(bin_centers, WT_exit_fit_mean[time_Win_C], yerr=WT_exit_fit_err[time_Win_C], fmt='o', color='black', capsize=5, label='Error Bars')
+        
+        # Vertical line for threshold
+        ax1.axvline(x=variables['Fit_Th_Wall'], color='gray', linestyle='--', label='Threshold')
+        
+        # Label for the left y-axis
+        ax1.set_ylabel("PDF", color='red')
+        
+        # Create a secondary y-axis
+        ax2 = ax1.twinx()
+        
+        # Generate and plot the barrier curve on the right y-axis
+        x_barrier_plot = np.linspace(variables['Fit_Th_Wall'] + 0.01, bin_centers[-1], 1000)
+        y_barrier_plot = variables['barrierPeakCoef'] / (x_barrier_plot - variables['Fit_Th_Wall'])
+        ax2.plot(x_barrier_plot, y_barrier_plot, color='red', zorder=10, label='V(F)')
+        
+        # Label for the right y-axis (optional)
+        ax2.set_ylabel("Barrier Values", color='red')
+        
+        # Label for the x-axis
+        ax1.set_xlabel("Fitness")
+        
+        # Title of the plot
+        title = "AVG WT G1-exiting fitness dist (" + str(time_Win_C * 0.25) + "* T_max)"
         plt.title(title)
-        fileName = "AVG_exit_fit_"+str(int(time_Win_C))
+        
+        # Add legends
+        ax1.legend(loc='upper left')
+        # ax2.legend(loc='upper right')  # Uncomment if adding data to ax2 with a legend
+        
+        # Save the plot with a specified file name
+        fileName = "AVG_exit_fit_" + str(int(time_Win_C))
         plt.savefig(fileName, dpi=200)
+        
+        # Close the plot to avoid display
         plt.close()
     
     return
@@ -721,13 +802,15 @@ def growth_factor_plotter():
     x_positions = np.array([0, 1])
     jitter_amount = 0.08  # Spread for scattered points to avoid overlap
     
-    # Scatter WT data points in purple
-    plt.scatter(np.random.normal(x_positions[0], jitter_amount, size=len(WT_growth_factors)), WT_growth_factors, 
-                color="purple", alpha=0.7, edgecolor="black", label="WT")
+    if WT_alive_stat[0]>0:
+        # Scatter WT data points in purple
+        plt.scatter(np.random.normal(x_positions[0], jitter_amount, size=len(WT_growth_factors)), WT_growth_factors, 
+                    color="purple", alpha=0.7, edgecolor="black", label="WT")
     
-    # Scatter C data points in green
-    plt.scatter(np.random.normal(x_positions[1], jitter_amount, size=len(C_growth_factors)), C_growth_factors, 
-                color="green", alpha=0.7, edgecolor="black", label="C")
+    if C_alive_stat[0]>0:
+        # Scatter C data points in green
+        plt.scatter(np.random.normal(x_positions[1], jitter_amount, size=len(C_growth_factors)), C_growth_factors, 
+                    color="green", alpha=0.7, edgecolor="black", label="C")
     
     # Adding titles and labels
     title = "growth ratio at t = 60 h"
@@ -740,30 +823,32 @@ def growth_factor_plotter():
     plt.savefig("growth_box.PNG", dpi=300)
     
     
-    # plt.figure()
-    # plt.scatter(WT_init_percent, WT_growth_factors, color="purple")
-    # plt.xlabel("starting ratio (% WT at t=0)", fontsize=12)
-    # plt.ylabel(r"N/N_0", fontsize=15)
-    # plt.title("WT cells in mixed organoids")
-    # plt.savefig("growth_vs_perc_WT.PNG", dpi=300)
-    plt.figure()
-    plt.scatter(WT_init_percent, WT_growth_factors, color="purple")
-    # Fit a linear regression line
-    slope, intercept = np.polyfit(WT_init_percent, WT_growth_factors, 1)
-    trendline = np.poly1d((slope, intercept))
-    plt.plot(WT_init_percent, trendline(WT_init_percent), color="purple", linestyle="--", label="Fit Line")
-    # Labels and title
-    plt.xlabel("Starting ratio (% WT at t=0)", fontsize=20)
-    plt.ylabel(r"$N/N_0$", fontsize=20)
-    plt.xticks(fontsize=20)
-    plt.yticks(fontsize=20)
-    # plt.title("WT cells in mixed organoids")
-    # Optional: show legend for the fit line
-    # plt.legend()
-    # Save the figure
-    plt.tight_layout()
-    plt.savefig("growth_vs_perc_WT.PNG", dpi=300)
-    plt.show()
+    if WT_alive_stat[0]>0:
+        
+        # plt.figure()
+        # plt.scatter(WT_init_percent, WT_growth_factors, color="purple")
+        # plt.xlabel("starting ratio (% WT at t=0)", fontsize=12)
+        # plt.ylabel(r"N/N_0", fontsize=15)
+        # plt.title("WT cells in mixed organoids")
+        # plt.savefig("growth_vs_perc_WT.PNG", dpi=300)
+        plt.figure()
+        plt.scatter(WT_init_percent, WT_growth_factors, color="purple")
+        # Fit a linear regression line
+        slope, intercept = np.polyfit(WT_init_percent, WT_growth_factors, 1)
+        trendline = np.poly1d((slope, intercept))
+        plt.plot(WT_init_percent, trendline(WT_init_percent), color="purple", linestyle="--", label="Fit Line")
+        # Labels and title
+        plt.xlabel("Starting ratio (% WT at t=0)", fontsize=20)
+        plt.ylabel(r"$N/N_0$", fontsize=20)
+        plt.xticks(fontsize=20)
+        plt.yticks(fontsize=20)
+        # plt.title("WT cells in mixed organoids")
+        # Optional: show legend for the fit line
+        # plt.legend()
+        # Save the figure
+        plt.tight_layout()
+        plt.savefig("growth_vs_perc_WT.PNG", dpi=300)
+        plt.show()
     
     
     
@@ -774,24 +859,26 @@ def growth_factor_plotter():
     # plt.title("C cells in mixed organoids")
     # plt.savefig("growth_vs_perc_C.PNG", dpi=300)
     
-    plt.figure()
-    plt.scatter(1 - WT_init_percent, C_growth_factors, color='green')
-    # Fit a linear regression line
-    slope, intercept = np.polyfit(1 - WT_init_percent, C_growth_factors, 1)
-    trendline = np.poly1d((slope, intercept))
-    plt.plot(1 - WT_init_percent, trendline(1 - WT_init_percent), color="g", linestyle="--", label="Fit Line")
-    # Labels and title
-    plt.xlabel("Starting ratio (% C at t=0)", fontsize=20)
-    plt.ylabel(r"$N/N_0$", fontsize=20)
-    plt.xticks(fontsize=20)
-    plt.yticks(fontsize=20)
-    # plt.title("C cells in mixed organoids")
-    # Optional: show legend for the fit line
-    # plt.legend()
-    # Save the figure
-    plt.tight_layout()
-    plt.savefig("growth_vs_perc_C.PNG", dpi=300)
-    plt.show()
+    if C_alive_stat[0]>0:
+        
+        plt.figure()
+        plt.scatter(1 - WT_init_percent, C_growth_factors, color='green')
+        # Fit a linear regression line
+        slope, intercept = np.polyfit(1 - WT_init_percent, C_growth_factors, 1)
+        trendline = np.poly1d((slope, intercept))
+        plt.plot(1 - WT_init_percent, trendline(1 - WT_init_percent), color="g", linestyle="--", label="Fit Line")
+        # Labels and title
+        plt.xlabel("Starting ratio (% C at t=0)", fontsize=20)
+        plt.ylabel(r"$N/N_0$", fontsize=20)
+        plt.xticks(fontsize=20)
+        plt.yticks(fontsize=20)
+        # plt.title("C cells in mixed organoids")
+        # Optional: show legend for the fit line
+        # plt.legend()
+        # Save the figure
+        plt.tight_layout()
+        plt.savefig("growth_vs_perc_C.PNG", dpi=300)
+        plt.show()
     
     return
 
@@ -833,9 +920,14 @@ def states_box_plotter():
     
     return
 
-N_runs = 60
+N_runs = 30
 time = np.loadtxt("run_1/pp_data/time.txt", delimiter=',', dtype=float)
 N_samples = len(time)
+
+## Reading params
+filename = 'run_1/params.csv'
+variables = read_custom_csv(filename)
+## Reading params
 
 alive_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
 
@@ -857,6 +949,7 @@ WT_g0_diff_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
 
 ##### ent, ext, hist ############
 fit_hist_bins = np.loadtxt("run_1/pp_data/fit_hist_bins.txt", delimiter=',')
+fit_hist_bins_focused = np.loadtxt("run_1/pp_data/fit_hist_bins_focused.txt", delimiter=',')
 phi_hist_bins = np.loadtxt("run_1/pp_data/phi_hist_bins.txt", delimiter=',')
 
 N_time_windows = 5
@@ -955,18 +1048,17 @@ np.savetxt("overal_pp"+"/"+"WT_G1_fractions.txt", WT_G1_fractions, fmt='%.4f', d
 np.savetxt("overal_pp"+"/"+"WT_G0_fractions.txt", WT_G0_fractions, fmt='%.4f', delimiter=',')
 np.savetxt("overal_pp"+"/"+"WT_SG2M_fractions.txt", WT_SG2M_fractions, fmt='%.4f', delimiter=',')
 
+exp_data_load_switch = 1
+save_switch = 1
 
+overal_plotter(exp_data_load_switch, save_switch)
 
 growth_factor_plotter()
+
 states_box_plotter()
 
-## overal plot
-exp_data_load_switch = 0
-save_switch = 1
-overal_plotter(exp_data_load_switch, save_switch)
 distributions_plotter()
 heatmap_dist_plotter()
-## overal plot
 
 # ## overal save
 # overal_saver()

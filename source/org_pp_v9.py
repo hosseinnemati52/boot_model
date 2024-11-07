@@ -775,6 +775,7 @@ n_bins_phi = 50
 phi_hist_bins = np.linspace(0, 2*np.pi , n_bins_phi+1)
 
 np.savetxt("pp_data"+"/"+"fit_hist_bins.txt", fit_hist_bins, fmt='%1.4f')
+np.savetxt("pp_data"+"/"+"fit_hist_bins_focused.txt", fit_hist_bins_focused, fmt='%1.4f')
 np.savetxt("pp_data"+"/"+"phi_hist_bins.txt", phi_hist_bins, fmt='%1.4f')
 ####### full temporal hists #############
 
