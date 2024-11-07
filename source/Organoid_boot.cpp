@@ -409,6 +409,8 @@ int main()
     //############### INITIALIZAION ##############
     initConfig =  config.initConfig;
     //############### INITIALIZAION ##############
+
+    double deltaFit_computational_cut = barrierPeakCoef / (typeOmega[1]*2*PI*G1Border); // This means that at the cutoff fitness value, the height is considered to be equal to \phi=0;
     ///////////////////////////////// VARIABLES VALUE ASSIGHNMENT /////////////////////
 
 
@@ -579,7 +581,7 @@ int main()
     unsigned long long int_rand_1, int_rand_2;
     double uniform_rand_1, uniform_rand_2, gauss_rand_1, gauss_rand_2; // for Box-Muller transform
     double SyncTerm;
-    double phiNoise, fitNoise, peakFactor, deltaPhi, phiMid, barrierSTD, funcOld, funcNew;
+    double phiNoise, fitNoise, peakFactor, deltaPhi, phiMid, funcOld, funcNew, barrierD, funcBarrier;
     // k_0 = 1.0 / (1.0e-5);
 
     // for identifying immediate neighbors
@@ -790,15 +792,19 @@ int main()
                 fitNoise = typeSigmaFit[cellType_1] * sqrt_dt * gauss_rand_2;
                 // noises calc
 
-                barrierSTD = typeBarrierW[cellType_1]/2.0; // the width of barrier is twice as the std of it.
+                // barrierSTD = typeBarrierW[cellType_1]/2.0; // the width of barrier is twice as the std of it.
 
-                if (cellFitness[cellC_1][0] > Fit_Th_Wall + fit_eps)
+                barrierD = typeBarrierW[cellType_1]/2.0; // the width of barrier = 2 * D.
+
+                if (cellFitness[cellC_1][0] > Fit_Th_Wall + deltaFit_computational_cut)
                 {
-                    peakFactor = (barrierPeakCoef / (cellFitness[cellC_1][0]-Fit_Th_Wall) ) / (2.506628 * pow(barrierSTD, 3));
+                    // peakFactor = (barrierPeakCoef / (cellFitness[cellC_1][0]-Fit_Th_Wall) ) / (2.506628 * pow(barrierSTD, 3)); // this was for gaussian
+                    peakFactor = (barrierPeakCoef / (cellFitness[cellC_1][0]-Fit_Th_Wall) );
                     // 2.506628 = sqrt(2*PI)
                 } else
                 {
-                    peakFactor = (barrierPeakCoef / (fit_eps) ) / (2.506628 * pow(barrierSTD, 3));
+                    // peakFactor = (barrierPeakCoef / (fit_eps) ) / (2.506628 * pow(barrierSTD, 3));
+                    peakFactor = (barrierPeakCoef / (deltaFit_computational_cut) );
                     // 2.506628 = sqrt(2*PI)
                 }
                 // if (peakFactor < 0)
@@ -814,14 +820,18 @@ int main()
 
                 // prediction (first step for phi)
                 deltaPhi = (cellPhi[cellC_1] - G1Border*2*PI);
-                funcOld = (typeOmega[cellType_1] + peakFactor * deltaPhi * exp(- deltaPhi * deltaPhi / (2 * barrierSTD * barrierSTD)) + cellSync[cellC_1]);
+                // funcOld = (typeOmega[cellType_1] + peakFactor * deltaPhi * exp(- deltaPhi * deltaPhi / (2 * barrierSTD * barrierSTD)) + cellSync[cellC_1]);
+                funcBarrier = (abs(deltaPhi)<barrierD) * (0.5 * PI / barrierD) * peakFactor * sin(deltaPhi * PI / barrierD) * (1+cos(deltaPhi * PI / barrierD));
+                funcOld = (typeOmega[cellType_1] + funcBarrier + cellSync[cellC_1]);
                 phiMid = cellPhi[cellC_1] + \
                         dt * funcOld + \
                         phiNoise;
                 
                 // correction (second step for phi)
                 deltaPhi = (phiMid - G1Border*2*PI);
-                funcNew = (typeOmega[cellType_1] + peakFactor * deltaPhi * exp(- deltaPhi * deltaPhi / (2 * barrierSTD * barrierSTD)) + cellSync[cellC_1]);
+                // funcNew = (typeOmega[cellType_1] + peakFactor * deltaPhi * exp(- deltaPhi * deltaPhi / (2 * barrierSTD * barrierSTD)) + cellSync[cellC_1]);
+                funcBarrier = (abs(deltaPhi)<barrierD) * (0.5 * PI / barrierD) * peakFactor * sin(deltaPhi * PI / barrierD) * (1+cos(deltaPhi * PI / barrierD));
+                funcNew = (typeOmega[cellType_1] + funcBarrier + cellSync[cellC_1]);
                 cellPhiUpdated[cellC_1] = cellPhi[cellC_1] + \
                                         dt * 0.5 * (funcOld + funcNew) + \
                                         phiNoise;
@@ -851,11 +861,11 @@ int main()
                                                 fitNoise + \
                                                 dt * cellJ[cellC_1];
                 
-                if (   (abs(cellPhiUpdated[cellC_1] - G1Border*2*PI) < barrierSTD ) \
-                    && (cellFitnessUpdated[cellC_1][0] < Fit_Th_Wall + fit_eps ) )
-                {
-                    cellFitnessUpdated[cellC_1][0] = cellFitness[cellC_1][0];
-                }
+                // if (   (abs(cellPhiUpdated[cellC_1] - G1Border*2*PI) < barrierD ) \
+                //     && (cellFitnessUpdated[cellC_1][0] < Fit_Th_Wall + deltaFit_computational_cut ) )
+                // {
+                //     cellFitnessUpdated[cellC_1][0] = cellFitness[cellC_1][0];
+                // }
                 
 
             }
