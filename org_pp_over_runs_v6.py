@@ -396,11 +396,7 @@ def plotter(t, snapshotInd):
 
 def overal_plotter(exp_data_load_switch, save_switch):
     
-    try:
-        directory = "overal_pp"
-        os.makedirs(directory, exist_ok=True)
-    except:
-        pass
+
     
     save_array = np.zeros((3, len(time)))
     
@@ -599,44 +595,6 @@ def overal_plotter(exp_data_load_switch, save_switch):
     
     
     
-    
-    return
-
-def overal_saver():
-    
-    try:
-        directory = "overal_pp"
-        os.makedirs(directory, exist_ok=True)
-    except:
-        pass
-        
-    # C_alive_stat_overal[runC, :] = C_alive_stat.copy()
-    # C_apop_stat_overal[runC, :] = C_apop_stat.copy()
-    
-    # WT_alive_stat_overal[runC, :] = WT_alive_stat.copy()
-    # WT_apop_stat_overal[runC, :] = WT_apop_stat.copy()
-    # WT_cyc_stat_overal[runC, :] = WT_cyc_stat.copy()
-    # WT_diff_stat_overal[runC, :] = WT_diff_stat.copy()
-    # WT_g0_stat_overal[runC, :] = WT_g0_stat.copy()
-    # WT_g1_arr_stat_overal[runC, :] = WT_g1_arr_stat.copy()
-    # WT_g1_cyc_stat_overal[runC, :] = WT_g1_cyc_stat.copy()
-    # WT_g1_tot_stat_overal[runC, :] = WT_g1_tot_stat.copy()
-    
-    # WT_g0_diff_stat_overal[runC, :] = WT_g0_stat.copy() + WT_diff_stat.copy()
-    
-    
-    # np.savetxt(directory+"/"+"time.txt", time, fmt='%.4f')
-    # np.savetxt(directory+"/"+"alive_stat_overal.txt", alive_stat_overal, fmt='%d')
-    # np.savetxt(directory+"/"+"C_alive_stat.txt", C_alive_stat, fmt='%d')
-    # np.savetxt(directory+"/"+"C_apop_stat.txt", C_apop_stat, fmt='%d')
-    # np.savetxt(directory+"/"+"WT_alive_stat.txt", WT_alive_stat, fmt='%d')
-    # np.savetxt(directory+"/"+"WT_cyc_stat.txt", WT_cyc_stat, fmt='%d')
-    # np.savetxt(directory+"/"+"WT_g1_cyc_stat.txt", WT_g1_cyc_stat, fmt='%d')
-    # np.savetxt(directory+"/"+"WT_g1_arr_stat.txt", WT_g1_arr_stat, fmt='%d')
-    # np.savetxt(directory+"/"+"WT_g1_tot_stat.txt", WT_g1_tot_stat, fmt='%d')
-    # np.savetxt(directory+"/"+"WT_g0_stat.txt", WT_g0_stat, fmt='%d')
-    # np.savetxt(directory+"/"+"WT_diff_stat.txt", WT_diff_stat, fmt='%d')
-    # np.savetxt(directory+"/"+"WT_apop_stat.txt", WT_apop_stat, fmt='%d')
     
     return
 
@@ -920,6 +878,84 @@ def states_box_plotter():
     
     return
 
+
+def mean_cycle_time_func_overal(WT_dt, CA_dt):
+    
+    
+    WT = WT_dt.copy()
+    CA = CA_dt.copy()
+    
+    
+    
+    
+    # Calculate mean and standard deviation for WT and CA
+    wt_mean, wt_std = np.mean(WT), np.std(WT)
+    ca_mean, ca_std = np.mean(CA), np.std(CA)
+    
+    # Plot histograms
+    plt.figure(figsize=(10, 6))
+    hist_WT, bins_WT, _ = plt.hist(WT, bins=15, color='purple', alpha=0.6, label='WT', edgecolor='black', density=True)
+    hist_CA, bins_CA, _ = plt.hist(CA, bins=15, color='green', alpha=0.4, label='CA', edgecolor='black', density=True)
+    
+    mid_bins_WT = bins_WT[:-1]+0.5*(bins_WT[1]-bins_WT[0])
+    mid_bins_CA = bins_CA[:-1]+0.5*(bins_CA[1]-bins_CA[0])
+    
+    np.savetxt("overal_pp"+"/"+"WT_div_dt_data.txt", WT_dt, fmt='%.6f', delimiter=',')
+    np.savetxt("overal_pp"+"/"+"CA_div_dt_data.txt", CA_dt, fmt='%.6f', delimiter=',')
+    np.savetxt("overal_pp"+"/"+"WT_div_dt_plot.txt", np.stack((mid_bins_WT,hist_WT)), fmt='%.6f', delimiter=',')
+    np.savetxt("overal_pp"+"/"+"CA_div_dt_plot.txt", np.stack((mid_bins_CA,hist_CA)), fmt='%.6f', delimiter=',')
+    
+    plt.yscale("log")
+    
+    # Find the maximum heights for both histograms
+    max_CA = max(hist_CA)
+    max_WT = max(hist_WT)
+    
+    
+    # Position scatter points and whiskers just above the highest bar
+    wt_max_freq = max(np.histogram(WT, bins=15)[0])
+    ca_max_freq = max(np.histogram(CA, bins=15)[0])
+    max_Val = np.array([max_CA, max_WT])
+    max_Val = max_Val[~np.isnan(max_Val)]
+    scatter_y_pos = max(max_Val)*1.1
+    scatter_y_pos_c = scatter_y_pos *1.1
+    
+    # Scatter plot for the means with whiskers on top
+    plt.scatter(wt_mean, scatter_y_pos, color='purple', s=100, marker='o')
+    plt.scatter(ca_mean, scatter_y_pos_c, color='green', s=100, marker='o')
+    plt.errorbar(wt_mean, scatter_y_pos, xerr=wt_std, fmt='o', color='purple', capsize=5, label=f'{wt_mean:.2f} ± {wt_std:.2f}')
+    plt.errorbar(ca_mean, scatter_y_pos_c, xerr=ca_std, fmt='o', color='green', capsize=5, label=f'{ca_mean:.2f} ± {ca_std:.2f}')
+    
+    plt.axvline(x = 2*np.pi/variables["typeOmega"][0], ymin=0, ymax=10*scatter_y_pos_c, label = r'$2\pi/\omega_{WT}$', color='purple')
+    plt.axvline(x = 2*np.pi/variables["typeOmega"][1], ymin=0, ymax=10*scatter_y_pos_c, label = r'$2\pi/\omega_{CA}$', color='g')
+    
+    # Labels and title
+    plt.xlabel("division dt", fontsize=15)
+    plt.ylabel("PDF of div_dt", fontsize=15)
+    plt.title("Division times of WT and CA cells")
+    plt.xticks(fontsize=15)
+    plt.yticks(fontsize=15)
+    # Adjust y-axis
+    plt.ylim(0, scatter_y_pos_c * 1.1)
+    
+    # Add legend
+    plt.legend(fontsize=15)
+    
+    # Show grid
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    
+    plt.savefig("divTimesHist_overal.PNG", dpi=150)
+    
+    
+    return
+
+
+try:
+    directory = "overal_pp"
+    os.makedirs(directory, exist_ok=True)
+except:
+    pass
+    
 N_runs = 30
 time = np.loadtxt("run_1/pp_data/time.txt", delimiter=',', dtype=float)
 N_samples = len(time)
@@ -981,6 +1017,11 @@ WT_G1_fractions =  np.zeros(N_runs)
 WT_SG2M_fractions =  np.zeros(N_runs)
 WT_G0_fractions =  np.zeros(N_runs)
 
+## division dt
+WT_dt = []
+CA_dt = []
+## division dt
+
 
 for runC in range(N_runs):
     folderName = "run_"+str(runC+1)
@@ -1026,6 +1067,12 @@ for runC in range(N_runs):
     
     WT_g0_diff_stat_overal[runC, :] = WT_g0_stat.copy() + WT_diff_stat.copy()
     
+    ## division dt
+    if WT_alive_stat[0] > 0:
+        WT_dt = WT_dt + list(np.loadtxt(folderName+"/pp_data/WT_div_dt.txt", delimiter=',', dtype=float))
+    if C_alive_stat[0] > 0:
+        CA_dt = CA_dt + list(np.loadtxt(folderName+"/pp_data/CA_div_dt.txt", delimiter=',', dtype=float))
+    ## division dt
     
     ## distributions ##
     for time_Win_C in range(N_time_windows):
@@ -1060,6 +1107,5 @@ states_box_plotter()
 distributions_plotter()
 heatmap_dist_plotter()
 
-# ## overal save
-# overal_saver()
-# ## overal save
+
+mean_cycle_time_func_overal(WT_dt, CA_dt)
