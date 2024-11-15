@@ -737,7 +737,7 @@ int main()
                         //
 
                         // Kuramoto
-                        SyncTerm = (typeTypeEpsilon[cellType_1][cellType_2] * (cellPhi[cellC_2] - cellPhi[cellC_1]));
+                        SyncTerm = (typeTypeEpsilon[cellType_1][cellType_2] * sin( (cellPhi[cellC_2] - cellPhi[cellC_1])/2.0 ) );
                         cellSync[cellC_1] += SyncTerm;
                         cellSync[cellC_2] -= SyncTerm;
 
