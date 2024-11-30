@@ -242,7 +242,7 @@ int main()
 
     /////////////////// FOLDERS NAMES ////////////////////
     // std::string dataFolderName = "data";
-    std::string initOfInitFolderName = "init_of_init";
+    // std::string initOfInitFolderName = "init_of_init";
     std::string initFolderName = "init";
     // std::string mainResumeFolderName = "main_resume";
     // std::string backupResumeFolderName = "backup_resume";
@@ -258,8 +258,10 @@ int main()
 
     // This block is for Linux:
     // mkdir(dataFolderName.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); //making data folder
-    mkdir(initOfInitFolderName.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); //making init_of_init folder
-    mkdir(initFolderName.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); //making init folder
+
+    // mkdir(initOfInitFolderName.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); //making init_of_init folder
+    // mkdir(initFolderName.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); //making init folder
+
     // mkdir(mainResumeFolderName.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); //making main_resume folder
     // mkdir(backupResumeFolderName.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); //making backup_resume folder
     /////////////////// MAKING SUB DIRECTORIES /////////////////
@@ -509,17 +511,17 @@ int main()
     mt_rand.seed(mt_rand_seed);
     unsigned long MT_MAX = mt_rand.max();
     unsigned long MT_MIN = mt_rand.min();
-    // saving initial random seed
-    ofstream randSeedInit;
-    randSeedInit.open(initOfInitFolderName + "/" + "randSeedInit.csv");
-    randSeedInit << mt_rand_seed;
-    randSeedInit.close(); // random seed saved
+    // // saving initial random seed
+    // ofstream randSeedInit;
+    // randSeedInit.open(initOfInitFolderName + "/" + "randSeedInit.csv");
+    // randSeedInit << mt_rand_seed;
+    // randSeedInit.close(); // random seed saved
     
 
-    // saving initial random generator
-    std::ofstream randStateInit(initOfInitFolderName + "/" + "randStateInit.csv");
-    randStateInit << mt_rand;
-    randStateInit.close();
+    // // saving initial random generator
+    // std::ofstream randStateInit(initOfInitFolderName + "/" + "randStateInit.csv");
+    // randStateInit << mt_rand;
+    // randStateInit.close();
     /////////////////// RANDOM GENERATOR SEEDING /////////////////
     
     
@@ -532,14 +534,42 @@ int main()
     //              cellVx, cellVy, 
     //              cellPhi, cellState, cellTheta,
     //              cellFitness, typeFit0, mt_rand);
+    
+    // reading init_steps_data.txt
+    double Dt; // Dt(h) is now a double
+    int n_sampling, m_checking;
+    // Open the file
+    std::ifstream init_steps_data("init_steps_data.txt");
+    if (!init_steps_data.is_open()) {
+        std::cerr << "Error: Unable to open init_steps_data.txt" << std::endl;
+        return 1;
+    }
+    // Read the file line by line
+    std::string line;
+    while (std::getline(init_steps_data, line)) {
+        if (line.find("Dt(h):") != std::string::npos) {
+            Dt = std::stod(line.substr(line.find(":") + 1)); // Use std::stod for double
+        } else if (line.find("n_sampling:") != std::string::npos) {
+            n_sampling = std::stoi(line.substr(line.find(":") + 1));
+        } else if (line.find("m_checking:") != std::string::npos) {
+            m_checking = std::stoi(line.substr(line.find(":") + 1));
+        }
+    }
+    // Close the file
+    init_steps_data.close();
+    // reading init_steps_data.txt
 
-    initializer_specific(N_UpperLim, &NCells, NCellsPerType,
+    // try to read phi and F initial values, otherwise randomize
+    read_or_init(N_UpperLim, &NCells, NCellsPerType,
                  typeR0, typeR2PI, 
                  cellType, cellX, cellY, 
                  cellVx, cellVy, 
                  cellPhi, cellState, cellTheta,
                  cellFitness, typeFit0, mt_rand,
                  G1Border, Fit_Th_G0, Fit_Th_Apop, typeSigmaFit);
+    // try to read phi and F initial values, otherwise randomize
+
+    
 
     R_Area_calc(N_UpperLim, NCells, NTypes,
                 typeR0, typeR2PI, 
@@ -1028,7 +1058,7 @@ void readConfigFile(const std::string& filename, Config& config) {
     }
 }
 
-void initializer_specific(const int N_UpperLim, int* NCellsPtr, vector<int>& NCellsPerType,
+void read_or_init(const int N_UpperLim, int* NCellsPtr, vector<int>& NCellsPerType,
                  const vector<double> typeR0, const vector<double> typeR2PI, 
                  vector<int>& cellType, vector<double>& cellX, vector<double>& cellY, 
                  vector<double>& cellVx, vector<double>& cellVy, 
@@ -1043,15 +1073,16 @@ void initializer_specific(const int N_UpperLim, int* NCellsPtr, vector<int>& NCe
 
     readIntVectorFromFile("Init_numbers.csv", NCellsPerType_read);
     int NTypes = NCellsPerType_read.size();
+    int NCells = 0;
 
     for (int i = 0; i < NTypes; i++)
     {
         NCellsPerType[i] = NCellsPerType_read[i];
+        NCells = NCells + NCellsPerType[i];
     }
-
-    int NCells = NCellsPerType[0] + NCellsPerType[1];
-    
     *NCellsPtr = NCells;
+
+    
 
     // std::srand(static_cast<unsigned int>(std::time(0)));
     
@@ -1210,7 +1241,7 @@ void initializer_specific(const int N_UpperLim, int* NCellsPtr, vector<int>& NCe
         cellType[cellC] = NULL_CELL_TYPE;
 
         // cellArea[cellC] = 0;
-        cellR[cellC] = 0;
+        // cellR[cellC] = 0;
         cellTheta[cellC] = 0;
 
         cellX[cellC] = 0;
@@ -1312,7 +1343,7 @@ void initializer_specific(const int N_UpperLim, int* NCellsPtr, vector<int>& NCe
     writeDoubleVectorToFile(cellVy, NCells, "init_of_init/Vy_init.txt");
     writeDoubleVectorToFile(cellPhi, NCells, "init_of_init/Phi_init.txt");
     writeIntVectorToFile(cellState, NCells, "init_of_init/State_init.txt");
-    writeDoubleVectorToFile(cellR, NCells, "init/R_init.txt");
+    // writeDoubleVectorToFile(cellR, NCells, "init/R_init.txt");
     writeDoubleVectorToFile(cellTheta, NCells, "init_of_init/Theta_init.txt");
     writeDoubleMatrixToFile(cellFitness, NCells, 2,  "init_of_init/Fit_init.txt");
 }

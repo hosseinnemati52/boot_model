@@ -38,7 +38,8 @@
 #define G1_ARR_STATE    (-1)
 #define G0_STATE        (-2)
 #define DIFF_STATE      (-3)
-#define APOP_STATE      (-4)
+#define APOP_STATE      (-4) // cell is shrinking. (R>0)
+#define WIPED_STATE     (-5) // cell is completely dead and wiped out (R=0)
 #define CA_CELL_TYPE    (1)
 #define WT_CELL_TYPE    (0)
 #define NULL_CELL_TYPE  (-1) // Does not exist (index > NCells)
@@ -143,6 +144,10 @@ struct Config {
     std::string newBornFitKey;
     //############### NEWBORN FITNESS ##############
 
+    //############### APOPTOSIS ##############
+    double shrinkageRate;
+    //############### APOPTOSIS ##############
+
     //############### INITIALIZAION ##############
     std::string initConfig;
     //############### INITIALIZAION ##############
@@ -182,15 +187,15 @@ void initializer(const int N_UpperLim, int* NCellsPtr, vector<int>& NCellsPerTyp
 void initial_read(const int N_UpperLim, int* NCellsPtr, vector<int>& NCellsPerType,
                  const vector<double> typeR0, const vector<double> typeR2PI, 
                  vector<int>& cellType, vector<double>& cellX, vector<double>& cellY, 
-                 vector<double>& cellVx, vector<double>& cellVy, 
+                 vector<double>& cellVx, vector<double>& cellVy, vector<double>& cellR,
                  vector<double>& cellPhi, vector<int>& cellState, vector<double>& cellTheta,
                  vector<vector<double>>& cellFitness);
 
-void R_Area_calc(const int N_UpperLim, const int NCells, const int NTypes,
+void Area_calc(const int N_UpperLim, const int NCells, const int NTypes,
                  const vector<double> typeR0, const vector<double> typeR2PI, 
                  const vector<int>& cellType,
                  const vector<double>& cellPhi, const vector<int>& cellState,
-                 vector<double>& cellR, vector<double>& cellArea);
+                 const vector<double>& cellR, vector<double>& cellArea);
 
 void writeIntVectorToFile(const std::vector<int>& vec, int NCells, const std::string& filename);
 
@@ -215,6 +220,7 @@ void dataBunchWriter(const int NCells, \
                      const vector<vector<double>> cellYBunch, \
                      const vector<vector<double>> cellVxBunch, \
                      const vector<vector<double>> cellVyBunch, \
+                     const vector<vector<double>> cellRBunch, \
                      const vector<vector<double>> cellPhiBunch, \
                      const vector<vector<int>> cellStateBunch, \
                      const vector<vector<vector<double>>> cellFitnessBunch, \
@@ -331,6 +337,10 @@ int main()
     std::string newBornFitKey;
     //############### NEWBORN FITNESS ##############
 
+    //############### APOPTOSIS ##############
+    double shrinkageRate;
+    //############### APOPTOSIS ##############
+
     //############### INITIALIZAION ##############
     std::string initConfig;
     //############### INITIALIZAION ##############
@@ -379,6 +389,7 @@ int main()
     Fit_Th_Apop = config.Fit_Th_Apop; // the fitness where WT cells go from differentiated state into apoptosis.
     double fit_eps = (1e-6) * abs(typeFit0[0] - Fit_Th_G0);
     double phi_eps = (1e-8) * (2.0 * PI);
+    double R_eps = (1e-6) * typeR2PI[0];
     //############### POTENTIAL LANDSCAPE ##############
     
     //############### TIMING & SAMPLING ##############
@@ -405,6 +416,10 @@ int main()
     //############### NEWBORN FITNESS ##############
     newBornFitKey =  config.newBornFitKey;
     //############### NEWBORN FITNESS ##############
+
+    //############### APOPTOSIS ##############
+    shrinkageRate = config.shrinkageRate;
+    //############### APOPTOSIS ##############
 
     //############### INITIALIZAION ##############
     initConfig =  config.initConfig;
@@ -526,7 +541,7 @@ int main()
     initial_read(N_UpperLim, &NCells, NCellsPerType,
                 typeR0, typeR2PI, 
                 cellType, cellX, cellY, 
-                cellVx, cellVy, 
+                cellVx, cellVy, cellR,
                 cellPhi, cellState, cellTheta,
                 cellFitness);
     } else if ( initConfig == "gen" )
@@ -545,7 +560,7 @@ int main()
     //              cellPhi, cellState, cellTheta,
     //              cellFitness, typeFit0, mt_rand);
     }
-    R_Area_calc(N_UpperLim, NCells, NTypes,
+    Area_calc(N_UpperLim, NCells, NTypes,
                 typeR0, typeR2PI, 
                 cellType,
                 cellPhi, cellState,
@@ -660,7 +675,7 @@ int main()
         for (cellC_1 = 0; cellC_1 < NCells; cellC_1++) // loop on cellC_1
         {
 
-            if (cellState[cellC_1] == APOP_STATE)
+            if (cellState[cellC_1] == WIPED_STATE)
             {
                 cellPhiUpdated[cellC_1] = cellPhi[cellC_1];
                 cellFitnessUpdated[cellC_1][0] = cellFitness[cellC_1][0];
@@ -678,7 +693,7 @@ int main()
             for (cellC_2 = cellC_1 + 1 ; cellC_2 < NCells; cellC_2++) // loop on cellC_2, for interactions (force and game)
             {
 
-                if (cellState[cellC_2] == APOP_STATE)
+                if (cellState[cellC_2] == WIPED_STATE)
                 {
                     continue; // if the cell is already dead, there is nothing to do. Go to the next.
                 }
@@ -729,7 +744,9 @@ int main()
 
                     /////////// Game- and Sync interactions ////////////////
                     R_cut_game = R_cut_coef_game * (cellR[cellC_2] + cellR[cellC_1]);
-                    if (distance < R_cut_game ) // They do interact gamewise
+                    if ((distance < R_cut_game) && 
+                        (cellState[cellC_1]>APOP_STATE) && 
+                        (cellState[cellC_2]>APOP_STATE)) // They interact gamewise
                     {   
                         //
                         NN_game[cellC_1][cellC_2] = 1;
@@ -740,20 +757,22 @@ int main()
                         SyncTerm = (typeTypeEpsilon[cellType_1][cellType_2] * sin( (cellPhi[cellC_2] - cellPhi[cellC_1])/2.0 ) );
                         cellSync[cellC_1] += SyncTerm;
                         cellSync[cellC_2] -= SyncTerm;
+                        // Kuramoto
 
+                        // fitness flux
                         J_input_real_1     = typeTypePayOff_mat_real_C[cellType_1][cellType_2] + \
-                                             typeTypePayOff_mat_real_F1[cellType_1][cellType_2] * cellFitness[cellC_1][0] + \
-                                             typeTypePayOff_mat_real_F2[cellType_1][cellType_2] * cellFitness[cellC_2][0]; // This flux goes INTO cellC_1
+                                            typeTypePayOff_mat_real_F1[cellType_1][cellType_2] * cellFitness[cellC_1][0] + \
+                                            typeTypePayOff_mat_real_F2[cellType_1][cellType_2] * cellFitness[cellC_2][0]; // This flux goes INTO cellC_1
 
                         J_input_real_2     = typeTypePayOff_mat_real_C[cellType_2][cellType_1] + \
-                                             typeTypePayOff_mat_real_F1[cellType_2][cellType_1] * cellFitness[cellC_2][0] + \
-                                             typeTypePayOff_mat_real_F2[cellType_2][cellType_1] * cellFitness[cellC_1][0]; // This flux goes INTO cellC_2
+                                            typeTypePayOff_mat_real_F1[cellType_2][cellType_1] * cellFitness[cellC_2][0] + \
+                                            typeTypePayOff_mat_real_F2[cellType_2][cellType_1] * cellFitness[cellC_1][0]; // This flux goes INTO cellC_2
                         
                         cellJ[cellC_1] += J_input_real_1; // This flux goes INTO cellC_1
                         cellJ[cellC_2] += J_input_real_2; // This flux goes INTO cellC_2 
+                        // fitness flux
 
-
-                    } // end of "if (distance < R_cut_game )"
+                    } // end of "if ((distance < R_cut_game) && ...)"
                     else
                     {
                         NN_game[cellC_1][cellC_2] = 0;
@@ -766,8 +785,8 @@ int main()
             
 
 
-
-            if (cellState[cellC_1] != APOP_STATE) // it should be alive
+            // This if is for calculating the updated versions of phi, fitness, and R, based on the state of cellC_1
+            if (cellState[cellC_1] > APOP_STATE) // it should be alive
             {
 
                 // The Updated versions of Phi, R, and Fitness of cellC_1 are calculated here
@@ -867,19 +886,26 @@ int main()
                 //     cellFitnessUpdated[cellC_1][0] = cellFitness[cellC_1][0];
                 // }
                 
+                cellAreaUpdate_val = typeA_min[cellType_1] + (typeA_max[cellType_1] - typeA_min[cellType_1]) * cellPhiUpdated[cellC_1] / (2 * PI);
+                cellRUpdated[cellC_1] = pow(cellAreaUpdate_val / PI, 0.5);
 
             }
-            else // if it is dead, nothing updates
+            else if (cellState[cellC_1] == APOP_STATE) // The cell is shrinking. Only R updates
             {
                 cellPhiUpdated[cellC_1] = cellPhi[cellC_1];
                 cellFitnessUpdated[cellC_1][0] = cellFitness[cellC_1][0];
+
+                cellRUpdated[cellC_1] = cellR[cellC_1] + dt * shrinkageRate;
             }
+            else if (cellState[cellC_1] == WIPED_STATE) // if it is dead, nothing updates
+            {
+                cellPhiUpdated[cellC_1] = cellPhi[cellC_1];
+                cellFitnessUpdated[cellC_1][0] = cellFitness[cellC_1][0];
 
+                cellRUpdated[cellC_1] = 0.0;
+            }
+            // This if is for calculating the updated versions of phi, fitness, and R, based on the state of cellC_1
 
-            cellAreaUpdate_val = typeA_min[cellType_1] + (typeA_max[cellType_1] - typeA_min[cellType_1]) * cellPhiUpdated[cellC_1] / (2 * PI);
-            cellRUpdated[cellC_1] = pow(cellAreaUpdate_val / PI, 0.5);
-            // The Updated versions of Phi, R, and Fitness of cellC_1 are calculated here
-            
         } // the end of "for (cellC_1 = 0; cellC_1 < NCells; cellC_1++)"
 
 
@@ -887,7 +913,7 @@ int main()
         // These two for loops are for calculating center-to-center force terms
         for (cellC_1 = 0; cellC_1 < NCells; cellC_1++) // loop on cellC_1
         {
-            if (cellState[cellC_1] == APOP_STATE)
+            if (cellState[cellC_1] == WIPED_STATE)
             {
                 cellVx[cellC_1] =   0.0 ;
                 cellVy[cellC_1] =   0.0 ;
@@ -899,7 +925,7 @@ int main()
 
             for (cellC_2 = cellC_1 + 1 ; cellC_2 < NCells; cellC_2++) // loop on cellC_2, for interactions (force and game)
             {
-                if (cellState[cellC_2] == APOP_STATE)
+                if (cellState[cellC_2] == WIPED_STATE)
                 {
                     continue; // if the cell is already dead, there is nothing to do. Go to the next.
                 }
@@ -1043,18 +1069,19 @@ int main()
             // update of cancer cells
             if (cellType_1 == CA_CELL_TYPE) //CA_CELL_TYPE
             {
+
                 if (cellFitness[cellC_1][0] > Fit_Th_Apop && cellFitnessUpdated[cellC_1][0] > Fit_Th_Apop) // stays alive (fitness simply updates)
                 {
                     cellFitness[cellC_1][0] = cellFitnessUpdated[cellC_1][0];
                     cellState[cellC_1] = CYCLING_STATE;
-                }else if (cellFitness[cellC_1][0] > Fit_Th_Apop && cellFitnessUpdated[cellC_1][0] <= Fit_Th_Apop) // It dies
+                }else if (cellFitness[cellC_1][0] > Fit_Th_Apop && cellFitnessUpdated[cellC_1][0] <= Fit_Th_Apop) // It apoptoses
                 {
                     cellFitness[cellC_1][0] = cellFitnessUpdated[cellC_1][0];
                     cellState[cellC_1] = APOP_STATE;
                 }
-                else // It will saty dead
+                else if (cellR[cellC_1] < R_eps)// It is already wiped
                 {
-                    cellState[cellC_1] = APOP_STATE;
+                    cellState[cellC_1] = WIPED_STATE;
                 }
                 continue;
             }
@@ -1086,8 +1113,8 @@ int main()
                     continue;
                 } // the end of "if (cellFitness[cellC_1][0] > Fit_Th_G1_arr){}"
 
-                if (cellFitness[cellC_1][0] <= Fit_Th_G0 &&
-                    cellFitness[cellC_1][0] >  Fit_Th_Apop) // if it is in G0
+                else if (cellFitness[cellC_1][0] <= Fit_Th_G0 &&
+                         cellFitness[cellC_1][0] >  Fit_Th_Apop) // if it is in G0
                 {
                     if (cellFitnessUpdated[cellC_1][0] <= Fit_Th_G0 &&
                         cellFitnessUpdated[cellC_1][0] >  Fit_Th_Apop) // stays in G0
@@ -1105,6 +1132,11 @@ int main()
                         cellState[cellC_1] = APOP_STATE;
                     }
                     continue;
+                }
+
+                else if (cellR[cellC_1] < R_eps)// It must be wiped
+                {
+                    cellState[cellC_1] = WIPED_STATE;
                 }
             }
         } // the end of "for (cellC_1 = 0; cellC_1 < NCells; cellC_1++)" for State update and cell division operations.
@@ -1149,6 +1181,7 @@ int main()
                                 cellYBunch, \
                                 cellVxBunch, \
                                 cellVyBunch, \
+                                cellRBunch, \
                                 cellPhiBunch, \
                                 cellStateBunch, \
                                 cellFitnessBunch, \
@@ -1217,7 +1250,7 @@ int main()
                 writeDoubleVectorToFile(cellVx, NCells, loadFolderName+"/Vx_LS.txt");
                 writeDoubleVectorToFile(cellVy, NCells, loadFolderName+"/Vy_LS.txt");
                 writeDoubleVectorToFile(cellPhi, NCells, loadFolderName+"/Phi_LS.txt");
-                // writeDoubleVectorToFile(cellR, NCells, loadFolderName+"/R_LS.txt");
+                writeDoubleVectorToFile(cellR, NCells, loadFolderName+"/R_LS.txt");
                 writeDoubleMatrixToFile(cellFitness, NCells, 2,  loadFolderName+"/Fitness_LS.txt");
 
                 // writing the final state of random generator
@@ -1539,6 +1572,9 @@ void readConfigFile(const std::string& filename, Config& config) {
         } else if (key == "newBornFitKey") {
             config.newBornFitKey = value;
         //////////////////////////////////////////////////
+        } else if (key == "shrinkageRate") {
+            config.shrinkageRate = std::stod(value);
+        //////////////////////////////////////////////////
         } else if (key == "initConfig") {
             config.initConfig = value;
         
@@ -1776,7 +1812,7 @@ void initializer(const int N_UpperLim, int* NCellsPtr, vector<int>& NCellsPerTyp
 void initial_read(const int N_UpperLim, int* NCellsPtr, vector<int>& NCellsPerType,
                  const vector<double> typeR0, const vector<double> typeR2PI, 
                  vector<int>& cellType, vector<double>& cellX, vector<double>& cellY, 
-                 vector<double>& cellVx, vector<double>& cellVy, 
+                 vector<double>& cellVx, vector<double>& cellVy, vector<double>& cellR,
                  vector<double>& cellPhi, vector<int>& cellState, vector<double>& cellTheta,
                  vector<vector<double>>& cellFitness)
 {
@@ -1789,13 +1825,13 @@ void initial_read(const int N_UpperLim, int* NCellsPtr, vector<int>& NCellsPerTy
     vector<double> cellPhi_read;
     vector<int> cellState_read;
     vector<double> cellTheta_read;
-    // vector<double> cellR_read;
+    vector<double> cellR_read;
     vector<vector<double>> cellFitness_read;
 
     readIntVectorFromFile("init/Type_init.txt", cellType_read);
     readDoubleVectorFromFile("init/X_init.txt", cellX_read);
     readDoubleVectorFromFile("init/Y_init.txt", cellY_read);
-    // readDoubleVectorFromFile("init/R_init.txt", cellR_read);
+    readDoubleVectorFromFile("init/R_init.txt", cellR_read);
     readDoubleVectorFromFile("init/Vx_init.txt", cellVx_read);
     readDoubleVectorFromFile("init/Vy_init.txt", cellVy_read);
     readDoubleVectorFromFile("init/Phi_init.txt", cellPhi_read);
@@ -1814,7 +1850,7 @@ void initial_read(const int N_UpperLim, int* NCellsPtr, vector<int>& NCellsPerTy
         cellType[cellC] = cellType_read[cellC];
         cellX[cellC] = cellX_read[cellC];
         cellY[cellC] = cellY_read[cellC];
-        // cellR[cellC] = cellR_read[cellC];
+        cellR[cellC] = cellR_read[cellC];
         cellVx[cellC] = cellVx_read[cellC];
         cellVy[cellC] = cellVy_read[cellC];
         cellPhi[cellC] = cellPhi_read[cellC];
@@ -1838,7 +1874,7 @@ void initial_read(const int N_UpperLim, int* NCellsPtr, vector<int>& NCellsPerTy
         cellType[cellC] = NULL_CELL_TYPE;
 
         // cellArea[cellC] = 0;
-        // cellR[cellC] = 0;
+        cellR[cellC] = 0;
         cellTheta[cellC] = 0;
 
         cellX[cellC] = 0;
@@ -1854,40 +1890,38 @@ void initial_read(const int N_UpperLim, int* NCellsPtr, vector<int>& NCellsPerTy
 
 }
 
-void R_Area_calc(const int N_UpperLim, const int NCells, const int NTypes,
+void Area_calc(const int N_UpperLim, const int NCells, const int NTypes,
                  const vector<double> typeR0, const vector<double> typeR2PI, 
                  const vector<int>& cellType,
                  const vector<double>& cellPhi, const vector<int>& cellState,
-                 vector<double>& cellR, vector<double>& cellArea)
+                 const vector<double>& cellR, vector<double>& cellArea)
 {   
 
-    for (int cellC = 0; cellC < N_UpperLim; cellC++) // initial zero-assignment
-    {
-        cellArea[cellC] = 0.0;
-        cellR[cellC] = 0.0;
-    }
-
-    vector<double> A_min(NTypes);
-    vector<double> A_max(NTypes);
+    // vector<double> A_min(NTypes);
+    // vector<double> A_max(NTypes);
     
-    for (int type_C = 0; type_C < NTypes; type_C++)
-    {
-        A_min[type_C] = PI * typeR0[type_C] * typeR0[type_C];
-        A_max[type_C] = PI * typeR2PI[type_C] * typeR2PI[type_C];
-    }
+    // for (int type_C = 0; type_C < NTypes; type_C++)
+    // {
+    //     A_min[type_C] = PI * typeR0[type_C] * typeR0[type_C];
+    //     A_max[type_C] = PI * typeR2PI[type_C] * typeR2PI[type_C];
+    // }
+
 
     for (int cellC = 0; cellC < NCells; cellC++)
     {
-        if (cellState[cellC] == APOP_STATE) // the cell is dead
+        if (cellState[cellC] > WIPED_STATE) // not wiped yet
+        {
+            cellArea[cellC] = PI * cellR[cellC] * cellR[cellC];
+        }
+        else
         {
             cellArea[cellC] = 0.0;
-            cellR[cellC] = 0.0;
         }
-        else // the cell is alive
-        {
-            cellArea[cellC] = A_min[cellType[cellC]] + (A_max[cellType[cellC]] - A_min[cellType[cellC]]) * cellPhi[cellC] / (2 * PI); // linear area independency to phi
-            cellR[cellC] = pow(cellArea[cellC] / PI, 0.5);
-        }
+    }
+
+    for (int cellC = NCells; cellC < N_UpperLim; cellC++)
+    {
+        cellArea[cellC] = 0.0;
     }
 }
 
@@ -2159,6 +2193,7 @@ void dataBunchWriter(const int NCells, \
                      const vector<vector<double>> cellYBunch, \
                      const vector<vector<double>> cellVxBunch, \
                      const vector<vector<double>> cellVyBunch, \
+                     const vector<vector<double>> cellRBunch, \
                      const vector<vector<double>> cellPhiBunch, \
                      const vector<vector<int>> cellStateBunch, \
                      const vector<vector<vector<double>>> cellFitnessBunch, \
@@ -2175,6 +2210,7 @@ void dataBunchWriter(const int NCells, \
     writeDoubleMatrixToFile(DoubleTranspose(cellYBunch), NCells, cellYBunch.size(), "data/Y_"+ to_string(saved_bunch_index) + ".txt");
     writeDoubleMatrixToFile(DoubleTranspose(cellVxBunch), NCells, cellVxBunch.size(), "data/Vx_"+ to_string(saved_bunch_index) + ".txt");
     writeDoubleMatrixToFile(DoubleTranspose(cellVyBunch), NCells, cellVyBunch.size(), "data/Vy_"+ to_string(saved_bunch_index) + ".txt");
+    writeDoubleMatrixToFile(DoubleTranspose(cellRBunch),  NCells, cellRBunch.size(), "data/R_"+ to_string(saved_bunch_index) + ".txt");
     writeDoubleMatrixToFile(DoubleTranspose(cellPhiBunch), NCells, cellPhiBunch.size(), "data/Phi_"+ to_string(saved_bunch_index) + ".txt");
     writeIntMatrixToFile(IntTranspose(cellStateBunch), NCells, cellStateBunch.size(), "data/State_"+ to_string(saved_bunch_index) + ".txt");
     writeFitnessToFile(cellFitnessBunch, NCells, bunchLength, "data/Fit_"+ to_string(saved_bunch_index) + ".txt");
