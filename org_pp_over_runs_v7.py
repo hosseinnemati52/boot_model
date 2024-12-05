@@ -28,9 +28,11 @@ G1_ARR_STATE =    (-1)
 G0_STATE =        (-2)
 DIFF_STATE =      (-3)
 APOP_STATE =      (-4)
+WIPED_STATE =     (-5)
 CA_CELL_TYPE =    (1)
 WT_CELL_TYPE =    (0)
 NULL_CELL_TYPE =  (-1)
+
 
 
 def parse_array(value):
@@ -129,6 +131,8 @@ def read_custom_csv(filename):
     # typeOmegaLim = variables.get('typeOmegaLim', None)
     newBornFitKey = variables.get('newBornFitKey', None)
     
+    shrinkageRate = variables.get('shrinkageRate', None)
+    
     initConfig = variables.get('initConfig', None)
     
     return {
@@ -177,6 +181,8 @@ def read_custom_csv(filename):
         'typeTypePayOff_mat_imag_F2' :typeTypePayOff_mat_imag_F2,
         
         'newBornFitKey' : newBornFitKey,
+        
+        'shrinkageRate' : shrinkageRate,
         
         'initConfig': initConfig
     }
@@ -286,113 +292,6 @@ def stats_plotter(fileName):
     
     return 0
 
-def plotter(t, snapshotInd):
-    # size_vec = np.zeros(N_sph_tot)
-    # scale = 4
-
-    # norm = mcolors.Normalize(vmin=cell_sph.min(), vmax=cell_sph.max())
-    # cmap = cm.viridis
-    
-    # fig, ax = plt.subplots()
-    
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-    
-    WT_indices = (cellType==WT_CELL_TYPE) & (cellState!=APOP_STATE)
-    C_indices = (cellType==CA_CELL_TYPE) & (cellState!=APOP_STATE)
-    
-    thresh = 1e-8
-    
-    if len(WT_indices[WT_indices==1])>0:
-        WT_fitness_max = np.max(cellFitness[WT_indices, 0])
-        WT_fitness_min = np.min(cellFitness[WT_indices, 0])
-        
-        if abs(WT_fitness_max-WT_fitness_min)<thresh:
-            WT_fitness_max = WT_fitness_min + thresh
-    else:
-        WT_fitness_max = 0
-        WT_fitness_min = 0
-    
-    
-    
-    if len(C_indices[C_indices==1])>0:
-        C_fitness_max = np.max(cellFitness[C_indices, 0])
-        C_fitness_min = np.min(cellFitness[C_indices, 0])
-        
-        if abs(C_fitness_max-C_fitness_min)<thresh:
-            C_fitness_max = C_fitness_min + thresh
-    else:
-        C_fitness_max = 0
-        C_fitness_min = 0
-    
-    
-    normWT = mcolors.Normalize(vmin = WT_fitness_min , vmax = WT_fitness_max)
-    normC  = mcolors.Normalize(vmin =  C_fitness_min , vmax =  C_fitness_max)
-
-    for i in range(NCells):
-        # # size_vec[i] = scale * r_spheres[type_sph[i]]
-        # circle = patches.Circle((cellX[i], cellY[i]), radius=cellR[i], edgecolor='k', facecolor='g'*(cellType[i]) + 'violet'*(1-cellType[i]), alpha=0.8)
-        # ax1.add_patch(circle)
-        
-        if cellState[i]==APOP_STATE:
-            continue
-        
-        
-        if cellType[i] == 1:
-            # normalized_fitness = normC(cellFitness[i][0])
-            normalized_fitness = normC(0.5* ( cellFitness[i][0] + C_fitness_max))
-            color = cm.Greens(normalized_fitness) 
-        else:
-            # normalized_fitness = normWT(cellFitness[i][0])
-            normalized_fitness = normWT(0.5* ( cellFitness[i][0] +  WT_fitness_max))
-            color = cm.Purples(normalized_fitness) 
-        
-        if cellState[i]==DIFF_STATE or cellState[i]==G0_STATE:
-            polgon = patches.RegularPolygon((cellX[i], cellY[i]),numVertices=5, radius=cellR[i], edgecolor='k', facecolor=color, alpha=0.8)
-            ax1.add_patch(polgon)
-        else:
-            circle = patches.Circle((cellX[i], cellY[i]), radius=cellR[i], edgecolor='k', facecolor=color, alpha=0.8)
-            ax1.add_patch(circle)
-    # plt.scatter(x_sph, y_sph, s=size_vec, c=cell_sph, alpha=1, cmap='viridis')
-    ax1.axis("equal")
-    # plt.xlim((0,Lx))
-    # plt.ylim((0,Ly))
-    ax1.set_aspect('equal', adjustable='box')
-    
-    # sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    # sm.set_array(cell_sph)
-    # cbar = plt.colorbar(sm, ax=ax)
-    # cbar.set_label('Cell Value')
-
-    ax1.set_xlabel('X-axis')
-    ax1.set_ylabel('Y-axis')
-    
-    title = 't = {:.3f}'.format(t)
-    ax1.set_title(title)
-    # ax1.set_title('Colored Scatter Plot with Circles')
-    # plt.colorbar()  # Show color scale
-    
-    file_name = 'frames/frame_'+str(int(snapshotInd))+'.PNG'
-    # ax1.title(title)
-    # ax1.grid()
-    
-    ax2.plot(time, WT_alive_stat[:len(time)]/WT_alive_stat[0], label='WT(t)/WT(0)', color='violet')
-    ax2.plot(time, C_alive_stat[:len(time)]/C_alive_stat[0], label='C(t)/C(0)', color='g')
-    ax2.plot(time, C_alive_stat[:len(time)]/alive_stat[:len(time)], label='C(t)/tot(t)', color='g', linestyle='dashed')
-    ax2.plot(time, WT_alive_stat[:len(time)]/alive_stat[:len(time)], label='WT(t)/tot(t)', color='violet', linestyle='dashed')
-    ax2.set_yscale("log")
-    
-    ax2.legend()
-    ax2.grid()
-    ax2.set_xlabel('time')
-    
-    
-    # ax1.set_ylabel('Y-axis')
-    
-    plt.savefig(file_name, dpi=150)
-    # plt.show()
-    plt.close()
-    
-    return 0
 
 def overal_plotter(exp_data_load_switch, save_switch):
     
@@ -403,9 +302,9 @@ def overal_plotter(exp_data_load_switch, save_switch):
     ### absolute number
     list_of_data = [alive_stat_overal, 
                     C_alive_stat_overal, 
-                    C_apop_stat_overal, 
+                    C_dead_stat_overal, 
                     WT_alive_stat_overal, 
-                    WT_apop_stat_overal,
+                    WT_dead_stat_overal,
                     WT_cyc_stat_overal, 
                     WT_g0_diff_stat_overal,
                     WT_g1_arr_stat_overal,
@@ -415,9 +314,9 @@ def overal_plotter(exp_data_load_switch, save_switch):
     
     labels_of_data = ['tot', 
                       'C', 
-                      'C_apop',
+                      'C_dead',
                       'WT',
-                      'WT_apop',
+                      'WT_dead',
                       'WT_cyc',
                       'WT_g0_diff',
                       'WT_g1_arr',
@@ -595,6 +494,44 @@ def overal_plotter(exp_data_load_switch, save_switch):
     
     
     
+    
+    return
+
+def overal_saver():
+    
+    try:
+        directory = "overal_pp"
+        os.makedirs(directory, exist_ok=True)
+    except:
+        pass
+        
+    # C_alive_stat_overal[runC, :] = C_alive_stat.copy()
+    # C_apop_stat_overal[runC, :] = C_apop_stat.copy()
+    
+    # WT_alive_stat_overal[runC, :] = WT_alive_stat.copy()
+    # WT_apop_stat_overal[runC, :] = WT_apop_stat.copy()
+    # WT_cyc_stat_overal[runC, :] = WT_cyc_stat.copy()
+    # WT_diff_stat_overal[runC, :] = WT_diff_stat.copy()
+    # WT_g0_stat_overal[runC, :] = WT_g0_stat.copy()
+    # WT_g1_arr_stat_overal[runC, :] = WT_g1_arr_stat.copy()
+    # WT_g1_cyc_stat_overal[runC, :] = WT_g1_cyc_stat.copy()
+    # WT_g1_tot_stat_overal[runC, :] = WT_g1_tot_stat.copy()
+    
+    # WT_g0_diff_stat_overal[runC, :] = WT_g0_stat.copy() + WT_diff_stat.copy()
+    
+    
+    # np.savetxt(directory+"/"+"time.txt", time, fmt='%.4f')
+    # np.savetxt(directory+"/"+"alive_stat_overal.txt", alive_stat_overal, fmt='%d')
+    # np.savetxt(directory+"/"+"C_alive_stat.txt", C_alive_stat, fmt='%d')
+    # np.savetxt(directory+"/"+"C_apop_stat.txt", C_apop_stat, fmt='%d')
+    # np.savetxt(directory+"/"+"WT_alive_stat.txt", WT_alive_stat, fmt='%d')
+    # np.savetxt(directory+"/"+"WT_cyc_stat.txt", WT_cyc_stat, fmt='%d')
+    # np.savetxt(directory+"/"+"WT_g1_cyc_stat.txt", WT_g1_cyc_stat, fmt='%d')
+    # np.savetxt(directory+"/"+"WT_g1_arr_stat.txt", WT_g1_arr_stat, fmt='%d')
+    # np.savetxt(directory+"/"+"WT_g1_tot_stat.txt", WT_g1_tot_stat, fmt='%d')
+    # np.savetxt(directory+"/"+"WT_g0_stat.txt", WT_g0_stat, fmt='%d')
+    # np.savetxt(directory+"/"+"WT_diff_stat.txt", WT_diff_stat, fmt='%d')
+    # np.savetxt(directory+"/"+"WT_apop_stat.txt", WT_apop_stat, fmt='%d')
     
     return
 
@@ -878,9 +815,22 @@ def states_box_plotter():
     
     return
 
-
-def mean_cycle_time_func_overal(WT_dt, CA_dt):
+def mean_cycle_time_func_overal():
     
+    # WT_division_time = []
+    # CA_division_time = []
+    
+    WT_dt = []
+    CA_dt = []
+    
+    for i in range(N_runs):
+    
+        WT_dt_run = np.loadtxt("run_"+str(i+1)+"/pp_data/WT_div_dt.txt", delimiter=',')
+        CA_dt_run = np.loadtxt("run_"+str(i+1)+"/pp_data/CA_div_dt.txt", delimiter=',')
+    
+    
+        WT_dt = WT_dt.copy() + list(WT_dt_run).copy()
+        CA_dt = CA_dt.copy() + list(CA_dt_run).copy()
     
     WT = WT_dt.copy()
     CA = CA_dt.copy()
@@ -894,40 +844,31 @@ def mean_cycle_time_func_overal(WT_dt, CA_dt):
     
     # Plot histograms
     plt.figure(figsize=(10, 6))
-    hist_WT, bins_WT, _ = plt.hist(WT, bins=15, color='purple', alpha=0.6, label='WT', edgecolor='black', density=True)
-    hist_CA, bins_CA, _ = plt.hist(CA, bins=15, color='green', alpha=0.4, label='CA', edgecolor='black', density=True)
-    
-    mid_bins_WT = bins_WT[:-1]+0.5*(bins_WT[1]-bins_WT[0])
-    mid_bins_CA = bins_CA[:-1]+0.5*(bins_CA[1]-bins_CA[0])
-    
-    np.savetxt("overal_pp"+"/"+"WT_div_dt_data.txt", WT_dt, fmt='%.6f', delimiter=',')
-    np.savetxt("overal_pp"+"/"+"CA_div_dt_data.txt", CA_dt, fmt='%.6f', delimiter=',')
-    np.savetxt("overal_pp"+"/"+"WT_div_dt_plot.txt", np.stack((mid_bins_WT,hist_WT)), fmt='%.6f', delimiter=',')
-    np.savetxt("overal_pp"+"/"+"CA_div_dt_plot.txt", np.stack((mid_bins_CA,hist_CA)), fmt='%.6f', delimiter=',')
-    
-    plt.yscale("log")
+    hist_CA, bins_CA, _ = plt.hist(CA, bins=15, color='green', alpha=0.5, label='CA', edgecolor='black', density=True)
+    hist_WT, bins_WT, _ = plt.hist(WT, bins=15, color='purple', alpha=0.7, label='WT', edgecolor='black', density=True)
     
     # Find the maximum heights for both histograms
     max_CA = max(hist_CA)
     max_WT = max(hist_WT)
-    
+    maxes_candidates = np.array([max_WT, max_CA])
     
     # Position scatter points and whiskers just above the highest bar
-    wt_max_freq = max(np.histogram(WT, bins=15)[0])
-    ca_max_freq = max(np.histogram(CA, bins=15)[0])
-    max_Val = np.array([max_CA, max_WT])
-    max_Val = max_Val[~np.isnan(max_Val)]
-    scatter_y_pos = max(max_Val)*1.1
+    # wt_max_freq = max(np.histogram(WT, bins=15)[0])
+    # ca_max_freq = max(np.histogram(CA, bins=15)[0])
+    
+    scatter_y_pos = max(maxes_candidates[~np.isnan(maxes_candidates)])*1.1
     scatter_y_pos_c = scatter_y_pos *1.1
     
     # Scatter plot for the means with whiskers on top
-    plt.scatter(wt_mean, scatter_y_pos, color='purple', s=100, marker='o')
-    plt.scatter(ca_mean, scatter_y_pos_c, color='green', s=100, marker='o')
-    plt.errorbar(wt_mean, scatter_y_pos, xerr=wt_std, fmt='o', color='purple', capsize=5, label=f'{wt_mean:.2f} ± {wt_std:.2f}')
-    plt.errorbar(ca_mean, scatter_y_pos_c, xerr=ca_std, fmt='o', color='green', capsize=5, label=f'{ca_mean:.2f} ± {ca_std:.2f}')
+    if (not np.isnan(wt_mean)):
+        plt.scatter(wt_mean, scatter_y_pos, color='purple', s=100, marker='o', label=f'WT Mean: {wt_mean:.2f}')
+        plt.errorbar(wt_mean, scatter_y_pos, xerr=wt_std, fmt='o', color='purple', capsize=5, label=f'WT ±1 STD: {wt_std:.2f}')
+    if (not np.isnan(ca_mean)):
+        plt.scatter(ca_mean, scatter_y_pos_c, color='green', s=100, marker='o', label=f'CA Mean: {ca_mean:.2f}')
+        plt.errorbar(ca_mean, scatter_y_pos_c, xerr=ca_std, fmt='o', color='green', capsize=5, label=f'CA ±1 STD: {ca_std:.2f}')
     
-    plt.axvline(x = 2*np.pi/variables["typeOmega"][0], ymin=0, ymax=10*scatter_y_pos_c, label = r'$2\pi/\omega_{WT}$', color='purple')
-    plt.axvline(x = 2*np.pi/variables["typeOmega"][1], ymin=0, ymax=10*scatter_y_pos_c, label = r'$2\pi/\omega_{CA}$', color='g')
+    
+    plt.yscale("log")
     
     # Labels and title
     plt.xlabel("division dt", fontsize=15)
@@ -936,7 +877,7 @@ def mean_cycle_time_func_overal(WT_dt, CA_dt):
     plt.xticks(fontsize=15)
     plt.yticks(fontsize=15)
     # Adjust y-axis
-    plt.ylim(0, scatter_y_pos_c * 1.1)
+    plt.ylim(0, plt.ylim()[1] * 1.1)
     
     # Add legend
     plt.legend(fontsize=15)
@@ -944,7 +885,11 @@ def mean_cycle_time_func_overal(WT_dt, CA_dt):
     # Show grid
     plt.grid(axis='y', linestyle='--', alpha=0.7)
     
-    plt.savefig("divTimesHist_overal.PNG", dpi=150)
+    plt.savefig("divTimesHistOveralLog.PNG", dpi=150)
+    
+    plt.yscale("linear")
+    plt.savefig("divTimesHistOveralLin.PNG", dpi=150)
+    
     
     
     return
@@ -956,7 +901,8 @@ try:
 except:
     pass
     
-N_runs = 30
+N_runs = np.loadtxt('N_runs.csv', delimiter=',', dtype=int)
+
 time = np.loadtxt("run_1/pp_data/time.txt", delimiter=',', dtype=float)
 N_samples = len(time)
 
@@ -968,10 +914,10 @@ variables = read_custom_csv(filename)
 alive_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
 
 C_alive_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
-C_apop_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
+C_dead_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
 
 WT_alive_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
-WT_apop_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
+# WT_apop_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
 WT_cyc_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
 WT_diff_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
 WT_g0_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
@@ -981,6 +927,8 @@ WT_g1_tot_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
 WT_sg2m_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
 
 WT_g0_diff_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
+WT_dead_stat_overal = np.zeros((N_runs, N_samples), dtype=float)
+
 
 
 ##### ent, ext, hist ############
@@ -1017,11 +965,6 @@ WT_G1_fractions =  np.zeros(N_runs)
 WT_SG2M_fractions =  np.zeros(N_runs)
 WT_G0_fractions =  np.zeros(N_runs)
 
-## division dt
-WT_dt = []
-CA_dt = []
-## division dt
-
 
 for runC in range(N_runs):
     folderName = "run_"+str(runC+1)
@@ -1029,10 +972,10 @@ for runC in range(N_runs):
     alive_stat = np.loadtxt(folderName+"/pp_data/alive_stat.txt", delimiter=',', dtype=int)
     
     C_alive_stat = np.loadtxt(folderName+"/pp_data/C_alive_stat.txt", delimiter=',', dtype=int)
-    C_apop_stat = np.loadtxt(folderName+"/pp_data/C_apop_stat.txt", delimiter=',', dtype=int)
+    C_dead_stat = np.loadtxt(folderName+"/pp_data/C_dead_stat.txt", delimiter=',', dtype=int)
     
     WT_alive_stat = np.loadtxt(folderName+"/pp_data/WT_alive_stat.txt", delimiter=',', dtype=int)
-    WT_apop_stat = np.loadtxt(folderName+"/pp_data/WT_apop_stat.txt", delimiter=',', dtype=int)
+    WT_dead_stat = np.loadtxt(folderName+"/pp_data/WT_dead_stat.txt", delimiter=',', dtype=int)
     WT_cyc_stat = np.loadtxt(folderName+"/pp_data/WT_cyc_stat.txt", delimiter=',', dtype=int)
     WT_diff_stat = np.loadtxt(folderName+"/pp_data/WT_diff_stat.txt", delimiter=',', dtype=int)
     WT_g0_stat = np.loadtxt(folderName+"/pp_data/WT_g0_stat.txt", delimiter=',', dtype=int)
@@ -1053,10 +996,10 @@ for runC in range(N_runs):
     alive_stat_overal[runC, :] = alive_stat.copy()
     
     C_alive_stat_overal[runC, :] = C_alive_stat.copy()
-    C_apop_stat_overal[runC, :] = C_apop_stat.copy()
+    C_dead_stat_overal[runC, :] = C_dead_stat.copy()
     
     WT_alive_stat_overal[runC, :] = WT_alive_stat.copy()
-    WT_apop_stat_overal[runC, :] = WT_apop_stat.copy()
+    WT_dead_stat_overal[runC, :] = WT_dead_stat.copy()
     WT_cyc_stat_overal[runC, :] = WT_cyc_stat.copy()
     WT_diff_stat_overal[runC, :] = WT_diff_stat.copy()
     WT_g0_stat_overal[runC, :] = WT_g0_stat.copy()
@@ -1067,12 +1010,6 @@ for runC in range(N_runs):
     
     WT_g0_diff_stat_overal[runC, :] = WT_g0_stat.copy() + WT_diff_stat.copy()
     
-    ## division dt
-    if WT_alive_stat[0] > 0:
-        WT_dt = WT_dt + list(np.loadtxt(folderName+"/pp_data/WT_div_dt.txt", delimiter=',', dtype=float))
-    if C_alive_stat[0] > 0:
-        CA_dt = CA_dt + list(np.loadtxt(folderName+"/pp_data/CA_div_dt.txt", delimiter=',', dtype=float))
-    ## division dt
     
     ## distributions ##
     for time_Win_C in range(N_time_windows):
@@ -1107,5 +1044,8 @@ states_box_plotter()
 distributions_plotter()
 heatmap_dist_plotter()
 
+mean_cycle_time_func_overal()
 
-mean_cycle_time_func_overal(WT_dt, CA_dt)
+# ## overal save
+# overal_saver()
+# ## overal save

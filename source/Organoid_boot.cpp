@@ -237,8 +237,21 @@ void writeVecOfVecsUnequal(const std::vector<std::vector<double>>& vec_of_vecs, 
 ////////////////////////////// PROTOTYPES ////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
-int main()
+int main(int argc, char* argv[])
+// int main()
 {
+    if (argc != 2)
+    {
+        std::cout << "You should include one argument.\n";
+        return 1;
+    }
+
+    std::string argument = argv[1];
+    // std::string argument = "eq";
+
+    // mr : mechanically relax (no game / no fitness change / no phase change / no sampling / write final X, Y, Vx, Vy)
+    // eq : equilibration (no sampling / write final Fitness, Phi)
+    // norm : mormal simulation (normal simulation)
 
     /////////////////// FOLDERS NAMES ////////////////////
     std::string dataFolderName = "data";
@@ -246,20 +259,24 @@ int main()
     std::string mainResumeFolderName = "main_resume";
     std::string backupResumeFolderName = "backup_resume";
     std::string loadFolderName;
+    std::string initStepsFolderName = "initialize_steps";
     /////////////////// FOLDERS NAMES ////////////////////
 
     /////////////////// MAKING SUB DIRECTORIES /////////////////
-    // This block is for windows:
-    // mkdir(dataFolderName.c_str()); //making data folder
-    // mkdir(initFolderName.c_str()); //making init folder
-    // mkdir(mainResumeFolderName.c_str()); //making main_resume folder
-    // mkdir(backupResumeFolderName.c_str()); //making backup_resume folder
+    if ( argument == "norm")
+    {
+        // This block is for windows:
+        // mkdir(dataFolderName.c_str()); //making data folder
+        // mkdir(initFolderName.c_str()); //making init folder
+        // mkdir(mainResumeFolderName.c_str()); //making main_resume folder
+        // mkdir(backupResumeFolderName.c_str()); //making backup_resume folder
 
-    // This block is for Linux:
-    mkdir(dataFolderName.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); //making data folder
-    // mkdir(initFolderName.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); //making init folder
-    mkdir(mainResumeFolderName.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); //making main_resume folder
-    mkdir(backupResumeFolderName.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); //making backup_resume folder
+        // This block is for Linux:
+        mkdir(dataFolderName.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); //making data folder
+        // mkdir(initFolderName.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); //making init folder
+        mkdir(mainResumeFolderName.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); //making main_resume folder
+        mkdir(backupResumeFolderName.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); //making backup_resume folder
+    }
     /////////////////// MAKING SUB DIRECTORIES /////////////////
 
 
@@ -428,6 +445,66 @@ int main()
     double deltaFit_computational_cut = barrierPeakCoef / (typeOmega[1]*2*PI*G1Border); // This means that at the cutoff fitness value, the height is considered to be equal to \phi=0;
     ///////////////////////////////// VARIABLES VALUE ASSIGHNMENT /////////////////////
 
+    ///////////////////////////////// READING STEPWISE INITIALIZATION PARAMETERS /////////////////////
+    double mr_sim_time, eq_sim_time;
+    std::ifstream initStepsfile("init_steps_data.txt");
+    std::string line;
+    while (std::getline(initStepsfile, line)) {
+        std::stringstream ss(line);
+        std::string key;
+        std::getline(ss, key, ':');
+        std::string value;
+        std::getline(ss, value);
+
+        if (key == "Dt_mr(h)") {
+            mr_sim_time = std::stoi(value);
+        } else if (key == "Dt_eq(h)") {
+            eq_sim_time = std::stoi(value);
+        }
+    }
+    ///////////////////////////////// READING STEPWISE INITIALIZATION PARAMETERS /////////////////////
+
+    ///////////////////////////////// VARIABLES CHANGES BASED ON THE MODE (ARGUMENT) /////////////////////
+    double sim_time;
+    if (argument == "mr")
+    {
+        sim_time = mr_sim_time;
+        R_cut_coef_game = R_eps;
+
+        for (int typeC = 0; typeC < NTypes; typeC++)
+        {
+            typeOmega[typeC] = 0.0;
+            typeSigmaPhi[typeC] = 0.0;
+            typeSigmaFit[typeC] = 0.0;
+
+            for (int typeC_dum = 0; typeC_dum < NTypes; typeC_dum++)
+            {
+                typeTypePayOff_mat_real_C[typeC][typeC_dum] = 0.0;
+                typeTypePayOff_mat_real_F1[typeC][typeC_dum] = 0.0;
+                typeTypePayOff_mat_real_F2[typeC][typeC_dum] = 0.0;
+                typeTypePayOff_mat_imag_C[typeC][typeC_dum] = 0.0;
+                typeTypePayOff_mat_imag_F1[typeC][typeC_dum] = 0.0;
+                typeTypePayOff_mat_imag_F2[typeC][typeC_dum] = 0.0;
+            }
+        }
+    } 
+    else if (argument == "eq")
+    {
+        sim_time = eq_sim_time;
+    }
+    else if (argument == "norm")
+    {
+        sim_time = maxTime;
+    }
+    else
+    {
+        std::cout << "Wrong argument!\n";
+        return 1;
+    }
+    ///////////////////////////////// VARIABLES CHANGES BASED ON THE MODE (ARGUMENT) /////////////////////
+
+
+
 
     double motherFitnessWeight, inherentFitnessWeight;
     if (newBornFitKey == "FI") // full interitence
@@ -522,15 +599,20 @@ int main()
     unsigned long MT_MIN = mt_rand.min();
     // saving initial random seed
     ofstream randSeedInit;
-    randSeedInit.open(initFolderName + "/" + "randSeedInit.csv");
-    randSeedInit << mt_rand_seed;
-    randSeedInit.close(); // random seed saved
+    if (argument == "norm")
+    {
+        randSeedInit.open(initFolderName + "/" + "randSeedInit.csv");
+        randSeedInit << mt_rand_seed;
+        randSeedInit.close(); // random seed saved
+    }
     
-
     // saving initial random generator
-    std::ofstream randStateInit(initFolderName + "/" + "randStateInit.csv");
-    randStateInit << mt_rand;
-    randStateInit.close();
+    if (argument == "norm")
+    {
+        std::ofstream randStateInit(initFolderName + "/" + "randStateInit.csv");
+        randStateInit << mt_rand;
+        randStateInit.close();
+    }
     /////////////////// RANDOM GENERATOR SEEDING /////////////////
     
     
@@ -650,7 +732,7 @@ int main()
     int debug_var;
 
     /////// SIMULATION LOOP /////////////
-    while (t < maxTime)
+    while (t < sim_time)
     {
 
         // This loop for: Non-interactive updates, zero assighnment of interactive mediate tools.
@@ -1156,154 +1238,196 @@ int main()
         ///// Sampling operation //////
         if ((t-tLastSampling) > dt_sample - t_eps)
         {
-
-            //  take sample and add it to the current bunch
-            tBunch.push_back(t);
-            cellTypeBunch.push_back(cellType);
-            cellXBunch.push_back(cellX);
-            cellYBunch.push_back(cellY);
-            cellVxBunch.push_back(cellVx);
-            cellVyBunch.push_back(cellVy);
-            cellPhiBunch.push_back(cellPhi);
-            cellStateBunch.push_back(cellState);
-            cellRBunch.push_back(cellR);
-            cellFitnessBunch.push_back(cellFitness);
-
-            ////// writing the bunch /////////
-            if (cellTypeBunch.size() == samplesPerWrite)
+            if (argument == "norm")
             {
+                //  take sample and add it to the current bunch
+                tBunch.push_back(t);
+                cellTypeBunch.push_back(cellType);
+                cellXBunch.push_back(cellX);
+                cellYBunch.push_back(cellY);
+                cellVxBunch.push_back(cellVx);
+                cellVyBunch.push_back(cellVy);
+                cellPhiBunch.push_back(cellPhi);
+                cellStateBunch.push_back(cellState);
+                cellRBunch.push_back(cellR);
+                cellFitnessBunch.push_back(cellFitness);
+
+                ////// writing the bunch /////////
+                if (cellTypeBunch.size() == samplesPerWrite)
+                {
+                    
+                    // write the bunch
+                    dataBunchWriter(NCells, \
+                                    tBunch, \
+                                    cellTypeBunch, \
+                                    cellXBunch, \
+                                    cellYBunch, \
+                                    cellVxBunch, \
+                                    cellVyBunch, \
+                                    cellRBunch, \
+                                    cellPhiBunch, \
+                                    cellStateBunch, \
+                                    cellFitnessBunch, \
+                                    saved_bunch_index);
+
+                    // write the division times, and clear it
+                    std::string divisionTimesFileName = "divisionTimes_"+std::to_string(saved_bunch_index)+".txt";
+                    writeVecOfVecsUnequal(divisionTimes, NCells, dataFolderName+"/"+divisionTimesFileName);
+                    for (int cellC_divTimes = 0; cellC_divTimes < NCells; cellC_divTimes++)
+                    {
+                        divisionTimes[cellC_divTimes].clear();
+                    }
+                    
+
+                    cout<<"t = "<<t<<endl;
+
+                    saved_bunch_index++;
+
+                    tBunch.clear();
+                    cellTypeBunch.clear();
+                    cellXBunch.clear();
+                    cellYBunch.clear();
+                    cellVxBunch.clear();
+                    cellVyBunch.clear();
+                    cellPhiBunch.clear();
+                    cellStateBunch.clear();
+                    cellRBunch.clear();
+                    cellFitnessBunch.clear();
+
+                    bunchInd++;
+                    
+                    ///////////// NUMBERED DATA ZIPPING ///////////////////
+                    if ((writeCounter+1)%writePerZip ==0)
+                    {
+                        // string argv1 = 'data_'+to_string((int)(writeCounter/writePerZip))+'.zip';
+                        std::string argv1 = "data_" + std::to_string(static_cast<int>(writeCounter / writePerZip)+1) + ".zip";
+                        std::string argv2 = "data";
+                        std::string command = "python3 dataZipperNum.py " + argv1 + " " + argv2;
+                        system(command.c_str());
+                    }
+                    ///////////// NUMBERED DATA ZIPPING ///////////////////
+
+
+
+                    ///////////////////////// LS SAVING ///////////////////////
+                    for(int resumeFolderCounter=1; resumeFolderCounter<=2; resumeFolderCounter++)
+                    {
+                    if (resumeFolderCounter==1)
+                    {
+                        loadFolderName = mainResumeFolderName;
+                    }
+                    else if (resumeFolderCounter==2)
+                    {
+                        loadFolderName = backupResumeFolderName;
+                    }
+
+                    // writing the final time
+                    ofstream tLSCheck;
+                    tLSCheck.open(loadFolderName+"/"+"tLSCheck.csv");
+                    tLSCheck << t;
+                    tLSCheck.close();
+
+                    writeIntVectorToFile(cellType, NCells, loadFolderName+"/Type_LS.txt");
+                    writeDoubleVectorToFile(cellX, NCells, loadFolderName+"/X_LS.txt");
+                    writeDoubleVectorToFile(cellY, NCells, loadFolderName+"/Y_LS.txt");
+                    writeDoubleVectorToFile(cellVx, NCells, loadFolderName+"/Vx_LS.txt");
+                    writeDoubleVectorToFile(cellVy, NCells, loadFolderName+"/Vy_LS.txt");
+                    writeDoubleVectorToFile(cellPhi, NCells, loadFolderName+"/Phi_LS.txt");
+                    writeDoubleVectorToFile(cellR, NCells, loadFolderName+"/R_LS.txt");
+                    writeDoubleMatrixToFile(cellFitness, NCells, 2,  loadFolderName+"/Fitness_LS.txt");
+
+                    // writing the final state of random generator
+                    std::ofstream randStateLS(loadFolderName+"/"+"randStateLS.csv");
+                    randStateLS << mt_rand;
+                    randStateLS.close();
+
+                    // writing round counter
+                    ofstream roundCounterLS;
+                    roundCounterLS.open(loadFolderName+"/"+"roundCounterLS.csv");
+                    roundCounterLS << writeCounter;
+                    roundCounterLS.close();
+
+                    // writing the final time
+                    ofstream tLS;
+                    tLS.open(loadFolderName+"/"+"tLS.csv");
+                    tLS << t;
+                    tLS.close();
+
+                    // cout << "\033[2J\033[1;1H";
+                    }
+                    ///////////////////////// LS SAVING ///////////////////////
+
+
+                    writeCounter++;
+                }
+                ////// writing the bunch /////////
+
+                // writeIntVectorToFile(cellType, NCells, "data/Type_"+ to_string(saved_bunch_index) + ".txt");
+                // writeDoubleVectorToFile(cellX, NCells, "data/X_"+ to_string(saved_bunch_index) + ".txt");
+                // writeDoubleVectorToFile(cellY, NCells, "data/Y_"+ to_string(saved_bunch_index) + ".txt");
+                // writeDoubleVectorToFile(cellVx, NCells, "data/Vx_"+ to_string(saved_bunch_index) + ".txt");
+                // writeDoubleVectorToFile(cellVy, NCells, "data/Vy_"+ to_string(saved_bunch_index) + ".txt");
+                // writeDoubleVectorToFile(cellPhi, NCells, "data/Phi_"+ to_string(saved_bunch_index) + ".txt");
+                // writeDoubleVectorToFile(cellR, NCells, "data/R_"+ to_string(saved_bunch_index) + ".txt");
+                // // writeDoubleVectorToFile(cellTheta, NCells, "init/cellTheta_init.txt");
+                // writeDoubleMatrixToFile(cellFitness, NCells, 2,  "data/Fitness_"+ to_string(saved_bunch_index) + ".txt");
+
                 
-                // write the bunch
-                dataBunchWriter(NCells, \
-                                tBunch, \
-                                cellTypeBunch, \
-                                cellXBunch, \
-                                cellYBunch, \
-                                cellVxBunch, \
-                                cellVyBunch, \
-                                cellRBunch, \
-                                cellPhiBunch, \
-                                cellStateBunch, \
-                                cellFitnessBunch, \
-                                saved_bunch_index);
 
-                // write the division times, and clear it
-                std::string divisionTimesFileName = "divisionTimes_"+std::to_string(saved_bunch_index)+".txt";
-                writeVecOfVecsUnequal(divisionTimes, NCells, dataFolderName+"/"+divisionTimesFileName);
-                for (int cellC_divTimes = 0; cellC_divTimes < NCells; cellC_divTimes++)
-                {
-                    divisionTimes[cellC_divTimes].clear();
-                }
-                
+                tLastSampling = t;
 
-                cout<<"t = "<<t<<endl;
+            }// end of "if (argument == "norm")"
 
-                saved_bunch_index++;
-
-                tBunch.clear();
-                cellTypeBunch.clear();
-                cellXBunch.clear();
-                cellYBunch.clear();
-                cellVxBunch.clear();
-                cellVyBunch.clear();
-                cellPhiBunch.clear();
-                cellStateBunch.clear();
-                cellRBunch.clear();
-                cellFitnessBunch.clear();
-
-                bunchInd++;
-                
-                ///////////// NUMBERED DATA ZIPPING ///////////////////
-                if ((writeCounter+1)%writePerZip ==0)
-                {
-                    // string argv1 = 'data_'+to_string((int)(writeCounter/writePerZip))+'.zip';
-                    std::string argv1 = "data_" + std::to_string(static_cast<int>(writeCounter / writePerZip)+1) + ".zip";
-                    std::string argv2 = "data";
-                    std::string command = "python3 dataZipperNum.py " + argv1 + " " + argv2;
-                    system(command.c_str());
-                }
-                ///////////// NUMBERED DATA ZIPPING ///////////////////
-
-
-
-                ///////////////////////// LS SAVING ///////////////////////
-                for(int resumeFolderCounter=1; resumeFolderCounter<=2; resumeFolderCounter++)
-                {
-                if (resumeFolderCounter==1)
-                {
-                    loadFolderName = mainResumeFolderName;
-                }
-                else if (resumeFolderCounter==2)
-                {
-                    loadFolderName = backupResumeFolderName;
-                }
-
-                // writing the final time
-                ofstream tLSCheck;
-                tLSCheck.open(loadFolderName+"/"+"tLSCheck.csv");
-                tLSCheck << t;
-                tLSCheck.close();
-
-                writeIntVectorToFile(cellType, NCells, loadFolderName+"/Type_LS.txt");
-                writeDoubleVectorToFile(cellX, NCells, loadFolderName+"/X_LS.txt");
-                writeDoubleVectorToFile(cellY, NCells, loadFolderName+"/Y_LS.txt");
-                writeDoubleVectorToFile(cellVx, NCells, loadFolderName+"/Vx_LS.txt");
-                writeDoubleVectorToFile(cellVy, NCells, loadFolderName+"/Vy_LS.txt");
-                writeDoubleVectorToFile(cellPhi, NCells, loadFolderName+"/Phi_LS.txt");
-                writeDoubleVectorToFile(cellR, NCells, loadFolderName+"/R_LS.txt");
-                writeDoubleMatrixToFile(cellFitness, NCells, 2,  loadFolderName+"/Fitness_LS.txt");
-
-                // writing the final state of random generator
-                std::ofstream randStateLS(loadFolderName+"/"+"randStateLS.csv");
-                randStateLS << mt_rand;
-                randStateLS.close();
-
-                // writing round counter
-                ofstream roundCounterLS;
-                roundCounterLS.open(loadFolderName+"/"+"roundCounterLS.csv");
-                roundCounterLS << writeCounter;
-                roundCounterLS.close();
-
-                // writing the final time
-                ofstream tLS;
-                tLS.open(loadFolderName+"/"+"tLS.csv");
-                tLS << t;
-                tLS.close();
-
-                // cout << "\033[2J\033[1;1H";
-                }
-                ///////////////////////// LS SAVING ///////////////////////
-
-
-                writeCounter++;
-            }
-            ////// writing the bunch /////////
-
-            // writeIntVectorToFile(cellType, NCells, "data/Type_"+ to_string(saved_bunch_index) + ".txt");
-            // writeDoubleVectorToFile(cellX, NCells, "data/X_"+ to_string(saved_bunch_index) + ".txt");
-            // writeDoubleVectorToFile(cellY, NCells, "data/Y_"+ to_string(saved_bunch_index) + ".txt");
-            // writeDoubleVectorToFile(cellVx, NCells, "data/Vx_"+ to_string(saved_bunch_index) + ".txt");
-            // writeDoubleVectorToFile(cellVy, NCells, "data/Vy_"+ to_string(saved_bunch_index) + ".txt");
-            // writeDoubleVectorToFile(cellPhi, NCells, "data/Phi_"+ to_string(saved_bunch_index) + ".txt");
-            // writeDoubleVectorToFile(cellR, NCells, "data/R_"+ to_string(saved_bunch_index) + ".txt");
-            // // writeDoubleVectorToFile(cellTheta, NCells, "init/cellTheta_init.txt");
-            // writeDoubleMatrixToFile(cellFitness, NCells, 2,  "data/Fitness_"+ to_string(saved_bunch_index) + ".txt");
-
-            
-
-            tLastSampling = t;
-        }
+        } // end of "if ((t-tLastSampling) > dt_sample - t_eps)"
         ///// Sampling operation //////
 
 
         t += dt;
-    }
+    } // end of "while (t < sim_time)"
     /////// SIMULATION LOOP /////////////
     
 
 
+    if (argument == "norm")
+    {
+        system("python3 dataZipper.py");
+    }
+    else if (argument == "mr")
+    {
+        writeDoubleVectorToFile(cellX, NCells, initFolderName+"/X_init.txt");
+        writeDoubleVectorToFile(cellY, NCells, initFolderName+"/Y_init.txt");
+        writeDoubleVectorToFile(cellVx, NCells, initFolderName+"/Vx_init.txt");
+        writeDoubleVectorToFile(cellVy, NCells, initFolderName+"/Vy_init.txt");
+    }
+    else if (argument == "eq")
+    {
+        int stepIndex = -1;
+        std::string filename;
+
+        while(1)
+        {
+            ++stepIndex;
+            filename = initStepsFolderName + "/" + "Type_"+to_string(stepIndex)+".txt";
+            std::ifstream initStepFileCheck;
+            initStepFileCheck.open(filename);
+
+            if (initStepFileCheck.is_open())
+            {
+                initStepFileCheck.close();
+            }
+            else
+            {
+                break;
+            }
+        }
+        
+        writeIntVectorToFile(cellType, NCells, initStepsFolderName+"/"+"Type_"+to_string(stepIndex)+".txt");
+        writeDoubleVectorToFile(cellPhi, NCells, initStepsFolderName+"/"+"Phi_"+to_string(stepIndex)+".txt");
+        writeIntVectorToFile(cellState, NCells, initStepsFolderName+"/"+"State_"+to_string(stepIndex)+".txt");
+        writeDoubleVectorToFile(cellR, NCells, initStepsFolderName+"/"+"R_"+to_string(stepIndex)+".txt");
+        writeDoubleMatrixToFile(cellFitness, NCells, 2,  initStepsFolderName+"/"+"Fit_"+to_string(stepIndex)+".txt");
+    } // end of "if (argument == "norm"){}else{}else{}"
     
-    system("python3 dataZipper.py");
 
 
 

@@ -5,3 +5,5 @@ Also, the entries of the payoff matrix have noise terms.
 d Phi / d t = F(t);
 There are thresholds for F for : cycling -> G1-arrest -> G0 -> differentiation -> apoptosis.
 Also it saves the data less frequantly, and more wisely.
+
+This is old

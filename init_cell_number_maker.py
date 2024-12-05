@@ -18,10 +18,33 @@ import matplotlib.colors as mcolors
 import re
 import subprocess
 import os
+import sys
 
 
-N_runs = 30
-WT_init_frac_interval = np.array([0.0, 1.0])
+N_runs = np.loadtxt('N_runs.csv', delimiter=',', dtype=int)
+
+with open("compos.txt", "r") as compos:
+    
+    key = compos.readline()[:-1]
+    
+    if key=='mix':
+        a = 0.0
+        b = 1.0
+    elif key=='WT':
+        a = 1.0
+        b = 1.0
+    elif key=='C':
+        a = 0.0
+        b = 0.0
+    else:
+        print("############################")
+        print("Wrong compos key!")
+        print("############################")
+        sys.exit()
+    
+    compos.close()
+
+WT_init_frac_interval = np.array([a, b])
 
 eps = 0.0001
 
@@ -32,6 +55,7 @@ if np.mean(WT_init_frac_interval) > (1.0 - eps):
     min_size = 10
     max_size = 70
     init_num_cells = np.random.randint(min_size,max_size+1,N_runs)
+    #init_num_cells = 20*np.ones(N_runs)
     
     Init_numbers_array[0,:] = init_num_cells.copy()
     Init_numbers_array[1,:] = 0 * init_num_cells.copy()
@@ -54,6 +78,12 @@ else:
     
     min_size_C = 10
     max_size_C = 70
+    
+    #min_size_WT = 10
+    #max_size_WT = 20
+    
+    #min_size_C = 5
+    #max_size_C = 10
     
     # min_size_tot = 
     # max_size_tot = 

@@ -388,7 +388,7 @@ def XYVxVy_init():
     return cellX, cellY, cellVx, cellVy
 #################### FUNCTIONS ####################
 
-for i in range(100):
+for i in range(1):
 
     try:
         cellType    = np.loadtxt('init/Type_init.txt', delimiter=',', dtype=int)

@@ -39,9 +39,9 @@ Fit_Th_Apop = 0.35
 ############### POTENTIAL LANDSCAPE ##############
 
 ############### TIMING & SAMPLING ##############
-maxTime = 1.1
+maxTime = 60.1
 dt = 0.001
-dt_sample = 0.02
+dt_sample = 0.2
 samplesPerWrite = 20
 writePerZip = 10
 printingTimeInterval = 1.0

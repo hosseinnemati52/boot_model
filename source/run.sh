@@ -1,3 +1,3 @@
 #!/bin/bash
 
-./Organoid_boot
+./Organoid_boot norm
